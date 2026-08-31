@@ -11,7 +11,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { inspectPackage } from './detect.js';
-import { primeDownloads } from './registry.js';
+import { primeDownloads, flushDiskCache } from './registry.js';
 
 export const VERSION = '0.1.0';
 
@@ -58,6 +58,7 @@ export function createServer() {
     },
     async ({ name }) => {
       const r = await inspectPackage(name);
+      await flushDiskCache();
       return { content: [{ type: 'text', text: renderOne(r) }], structuredContent: r };
     },
   );
@@ -85,6 +86,7 @@ export function createServer() {
         ? `⛔ ${blocking.length} of ${results.length} package(s) must not be installed as-is.`
         : `✅ ${results.length} package(s) checked, nothing blocking.`;
 
+      await flushDiskCache();
       return {
         content: [{ type: 'text', text: [header, '', ...results.map(renderOne)].join('\n') }],
         structuredContent: { blocking: blocking.length, total: results.length, results },

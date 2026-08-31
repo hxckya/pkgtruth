@@ -4,6 +4,10 @@
  * degraded network can never make the agent's gate fail open.
  */
 
+import { getCachedDownloads, putCachedDownloads, flush as flushDiskCache } from './diskcache.js';
+
+export { flushDiskCache };
+
 const UA = 'pkgtruth (+https://github.com/pkgtruth/pkgtruth)';
 
 // Read configuration per call, not at import. A long-lived MCP server should
@@ -171,8 +175,15 @@ export async function fetchPackument(name) {
  *                                 read this as "unpopular"; it means unknown.
  */
 export async function fetchWeeklyDownloads(name) {
+  const api = downloadsApi();
+  const cached = await getCachedDownloads(name, api);
+  if (cached !== undefined) return { downloads: cached };
+
   const r = await getJson(`${downloadsApi()}/downloads/point/last-week/${encodeName(name)}`);
-  if (r.ok && typeof r.data?.downloads === 'number') return { downloads: r.data.downloads };
+  if (r.ok && typeof r.data?.downloads === 'number') {
+    await putCachedDownloads(name, r.data.downloads, api);
+    return { downloads: r.data.downloads };
+  }
   if (r.status === 404) return { downloads: null };
   return { downloads: null, failed: r.error || `downloads API returned ${r.status}` };
 }
@@ -200,7 +211,12 @@ export async function searchPackages(text, size = 10) {
  * every name it misses still gets its own verified lookup later.
  */
 export async function primeDownloads(names) {
-  const plain = [...new Set(names)].filter((n) => !n.startsWith('@'));
+  // Anything already on disk needs no network call at all.
+  const unresolved = [];
+  for (const n of new Set(names)) {
+    if ((await getCachedDownloads(n, downloadsApi())) === undefined) unresolved.push(n);
+  }
+  const plain = unresolved.filter((n) => !n.startsWith('@'));
   const CHUNK = 128;
   for (let i = 0; i < plain.length; i += CHUNK) {
     const batch = plain.slice(i, i + CHUNK);
@@ -211,6 +227,7 @@ export async function primeDownloads(names) {
     for (const name of batch) {
       const entry = r.data[name];
       if (!entry || typeof entry.downloads !== 'number') continue;
+      await putCachedDownloads(name, entry.downloads, downloadsApi());
       cache.set(`${downloadsApi()}/downloads/point/last-week/${encodeName(name)}`, {
         at: Date.now(),
         value: { ok: true, status: 200, data: { downloads: entry.downloads } },

@@ -140,17 +140,28 @@ Exit codes: `0` clean, `1` blocking packages found, `2` usage or runtime error.
 | `PKGTRUTH_MAX_CONCURRENCY` | per-host | Override request pacing |
 | `PKGTRUTH_REGISTRY` | npm | Alternate registry |
 | `PKGTRUTH_DOWNLOADS_API` | npm | Alternate downloads API |
+| `PKGTRUTH_CACHE_DIR` | `~/.cache/pkgtruth` | Where adoption figures are cached |
+| `PKGTRUTH_DISK_TTL_MS` | 6 hours | How long a cached figure stays usable |
+| `PKGTRUTH_NO_DISK_CACHE` | unset | Set to `1` to disable the cache |
 
-### On speed
+### On speed and rate limits
 
-A cold scan of ~18 dependencies takes a few seconds. Adoption figures come
-from npm's downloads API, which rate-limits bursts and cannot batch scoped
-names, so those lookups are paced deliberately. Results are cached in-process
-and the bulk endpoint covers unscoped names in a single request.
+Adoption figures come from npm's downloads API, which throttles bursts and
+cannot batch scoped names — a project with several `@scope/pkg` dependencies
+would spend its whole budget on every scan.
 
-The tool is paced rather than fast on purpose: an unpaced scan draws 429s, and
-a rate-limited lookup produces `UNKNOWN`, not `SAFE`. A verdict that flickers
-between runs is worse than one that takes an extra second.
+Three things keep that in check: the bulk endpoint resolves all unscoped names
+in one request, requests to that host are paced serially, and figures are
+cached on disk for six hours. Weekly download counts move slowly, so a
+six-hour-old number is no less true.
+
+A warm scan of ~18 dependencies takes about 1.4 seconds. A cold one after
+heavy use may return `UNKNOWN` for some packages — that is the intended
+failure mode. A throttled lookup never becomes `SAFE`; re-run, and the cache
+will answer.
+
+Cached figures are keyed by the API they came from, so pointing
+`PKGTRUTH_DOWNLOADS_API` at a private registry never reuses npm's numbers.
 
 ## License
 

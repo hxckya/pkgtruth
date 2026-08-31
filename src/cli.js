@@ -6,7 +6,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { inspectPackage } from './detect.js';
-import { primeDownloads } from './registry.js';
+import { primeDownloads, flushDiskCache } from './registry.js';
 
 const BLOCKING = new Set(['HALLUCINATED', 'DANGER']);
 
@@ -156,6 +156,7 @@ export async function runCli(argv) {
       process.stdout.write(`${PAINT.SAFE(`✅ ${results.length} package(s) checked, nothing blocking`)}\n`);
     }
   }
+  await flushDiskCache();
   return bad.length ? 1 : 0;
 }
 
