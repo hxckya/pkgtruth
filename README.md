@@ -7,28 +7,14 @@
 
 **Ground truth about npm packages, for AI coding agents and CI.**
 
+![pkgtruth catching a hallucinated package and a slopsquat](https://raw.githubusercontent.com/hxckya/pkgtruth/main/assets/demo.gif)
+
 Your agent just wrote `npm install unused-imports`. That package is not the
 linter plugin it meant. It is a name an attacker registered because models
 kept inventing it — and npm has since replaced it with a security placeholder.
 
 `pkgtruth` catches that before it reaches your lockfile.
 
-```
-⛔ 2 of 4 package(s) must not be installed as-is.
-
-HALLUCINATED  reqeusts-http-client
-  "reqeusts-http-client" does not exist on npm.
-  → did you mean: @actions/http-client, ws, @azure/core-http-compat
-
-DANGER        unused-imports@0.0.1-security
-  · npm replaced this package with a security placeholder (0.0.1-security).
-    The name was used to publish malicious code.
-  · Resolves to the same name as "eslint-plugin-unused-imports", which has
-    9,603,111 weekly downloads (22,756x this one).
-
-SAFE          express@5.2.1
-SAFE          lodash@4.18.1
-```
 
 ## Why this exists
 

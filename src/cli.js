@@ -59,9 +59,14 @@ function render(results) {
   for (const r of results) {
     const paint = PAINT[r.verdict] || ((s) => s);
     lines.push(`${paint(r.verdict.padEnd(13))} ${r.name}${r.version ? c('90', `@${r.version}`) : ''}`);
-    lines.push(`  ${r.summary}`);
-    for (const s of r.signals || []) {
-      if (s.severity === 'critical' || s.severity === 'high') lines.push(`    ${c('90', '·')} ${s.detail}`);
+    // The summary is a prose join of these same signals, so printing both
+    // says everything twice. Show the itemised evidence where there is any,
+    // and fall back to the sentence when there is nothing to itemise.
+    const notable = (r.signals || []).filter((s) => s.severity === 'critical' || s.severity === 'high');
+    if (notable.length) {
+      for (const s of notable) lines.push(`  ${c('90', '·')} ${s.detail}`);
+    } else {
+      lines.push(`  ${r.summary}`);
     }
     if (r.didYouMean?.length) lines.push(`    ${c('90', '→')} did you mean: ${r.didYouMean.slice(0, 3).map((d) => d.name).join(', ')}`);
     lines.push('');
