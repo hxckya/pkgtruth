@@ -45,7 +45,10 @@ function laneFor(url) {
   }
   if (!lanes.has(host)) {
     const limit = HOST_LIMITS[host] || HOST_LIMITS.default;
-    lanes.set(host, { ...limit, active: 0, lastStart: 0, waiting: [] });
+    // Escape hatch for private registries that do not need this pacing.
+    const override = Number(process.env.PKGTRUTH_MAX_CONCURRENCY);
+    const concurrency = Number.isFinite(override) && override > 0 ? override : limit.concurrency;
+    lanes.set(host, { ...limit, concurrency, active: 0, lastStart: 0, waiting: [] });
   }
   return lanes.get(host);
 }
