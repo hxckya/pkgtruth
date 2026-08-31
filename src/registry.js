@@ -8,7 +8,7 @@ import { getCachedDownloads, putCachedDownloads, flush as flushDiskCache } from 
 
 export { flushDiskCache };
 
-const UA = 'pkgtruth (+https://github.com/pkgtruth/pkgtruth)';
+const UA = 'pkgtruth (+https://github.com/hxckya/pkgtruth)';
 
 // Read configuration per call, not at import. A long-lived MCP server should
 // pick up a changed endpoint without a restart, and it keeps the module

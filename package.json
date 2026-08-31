@@ -2,6 +2,27 @@
   "name": "pkgtruth",
   "version": "0.1.0",
   "description": "Ground truth about npm packages for AI coding agents. Detects hallucinated and slopsquatted dependencies before they get installed.",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "slopsquatting",
+    "supply-chain",
+    "npm",
+    "security",
+    "ai-agent",
+    "hallucination",
+    "dependencies"
+  ],
+  "license": "MIT",
+  "author": "hxckya",
+  "homepage": "https://github.com/hxckya/pkgtruth#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hxckya/pkgtruth.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hxckya/pkgtruth/issues"
+  },
   "type": "module",
   "bin": {
     "pkgtruth": "bin/pkgtruth.js"
@@ -16,18 +37,6 @@
     "README.md",
     "LICENSE"
   ],
-  "keywords": [
-    "mcp",
-    "mcp-server",
-    "slopsquatting",
-    "supply-chain",
-    "npm",
-    "security",
-    "ai-agent",
-    "hallucination",
-    "dependencies"
-  ],
-  "license": "MIT",
   "scripts": {
     "test": "node --test test/*.test.js",
     "start": "node bin/pkgtruth.js",

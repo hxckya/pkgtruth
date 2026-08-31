@@ -1,5 +1,10 @@
 # pkgtruth
 
+[![npm](https://img.shields.io/npm/v/pkgtruth)](https://www.npmjs.com/package/pkgtruth)
+[![CI](https://github.com/hxckya/pkgtruth/actions/workflows/ci.yml/badge.svg)](https://github.com/hxckya/pkgtruth/actions/workflows/ci.yml)
+[![node](https://img.shields.io/node/v/pkgtruth)](https://nodejs.org)
+[![license](https://img.shields.io/npm/l/pkgtruth)](LICENSE)
+
 **Ground truth about npm packages, for AI coding agents and CI.**
 
 Your agent just wrote `npm install unused-imports`. That package is not the
@@ -163,6 +168,20 @@ will answer.
 Cached figures are keyed by the API they came from, so pointing
 `PKGTRUTH_DOWNLOADS_API` at a private registry never reuses npm's numbers.
 
+## Contributing
+
+Issues and pull requests are welcome at
+[github.com/hxckya/pkgtruth](https://github.com/hxckya/pkgtruth).
+
+Two things make a report especially useful: a legitimate package that gets
+flagged, and a malicious one that slips through. Both are regression tests
+waiting to be written.
+
+```bash
+npm test                 # offline
+npm run test:online      # includes live registry checks
+```
+
 ## License
 
-MIT
+MIT © hxckya
