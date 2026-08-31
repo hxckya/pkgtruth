@@ -11,6 +11,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { inspectPackage } from './detect.js';
+import { primeDownloads } from './registry.js';
 
 export const VERSION = '0.1.0';
 
@@ -75,6 +76,7 @@ export function createServer() {
     },
     async ({ names }) => {
       const unique = [...new Set(names)];
+      await primeDownloads(unique);
       const results = await mapLimit(unique, CONCURRENCY, (n) => inspectPackage(n));
       results.sort((a, b) => (ORDER[a.verdict] ?? 9) - (ORDER[b.verdict] ?? 9));
 

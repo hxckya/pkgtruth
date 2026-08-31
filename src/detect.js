@@ -73,7 +73,12 @@ export async function inspectPackage(name, { deep = true } = {}) {
   const modified = d.time?.modified ? new Date(d.time.modified) : null;
   const ageDays = created ? Math.floor((Date.now() - created.getTime()) / DAY) : null;
   const staleDays = modified ? Math.floor((Date.now() - modified.getTime()) / DAY) : null;
-  const downloads = await fetchWeeklyDownloads(name);
+  const dlResult = await fetchWeeklyDownloads(name);
+  const downloads = dlResult.downloads;
+  // Every lookup that failed rather than answered. A verdict built on
+  // missing evidence must say so instead of passing as a clean bill.
+  const gaps = [];
+  if (dlResult.failed) gaps.push(`adoption data unavailable (${dlResult.failed})`);
 
   let score = 0;
 
@@ -107,8 +112,18 @@ export async function inspectPackage(name, { deep = true } = {}) {
   const scripts = latest?.scripts || {};
   const installHooks = ['preinstall', 'install', 'postinstall'].filter((k) => scripts[k]);
   if (installHooks.length) {
-    score += 25;
-    signals.push({ id: 'install_scripts', severity: 'high', detail: `Runs on install: ${installHooks.map((h) => `${h}="${String(scripts[h]).slice(0, 80)}"`).join('; ')}` });
+    // Native builds legitimately need install hooks, and the heavily used
+    // ones (esbuild, sharp, bcrypt) are among the most scrutinised packages
+    // on the registry. Scoring them like an unknown package trains people to
+    // ignore the warning, which costs more than it catches — so report the
+    // hook, but let adoption decide how much alarm it carries.
+    const weight = downloads === null ? 25 : downloads > 1_000_000 ? 0 : downloads > 100_000 ? 10 : 25;
+    score += weight;
+    signals.push({
+      id: 'install_scripts',
+      severity: weight === 0 ? 'info' : weight <= 10 ? 'medium' : 'high',
+      detail: `Runs on install: ${installHooks.map((h) => `${h}="${String(scripts[h]).slice(0, 80)}"`).join('; ')}`,
+    });
   }
   if (!d.repository && !latest?.repository) {
     score += 15;
@@ -125,8 +140,15 @@ export async function inspectPackage(name, { deep = true } = {}) {
 
   // Impersonation check: a far more popular near-twin is the classic
   // slopsquat shape, and the signal that matters most.
-  if (deep && (downloads === null || downloads < 10_000)) {
-    const twin = await findPopularTwin(name, downloads ?? 0);
+  // The impersonation test is a ratio against our own adoption. Without a
+  // real download count that ratio is meaningless — treating "unknown" as
+  // zero makes every popular near-name look like a 100,000x impostor, which
+  // is how a rate limit turns into a wave of false accusations.
+  if (deep && dlResult.failed) {
+    gaps.push('impersonation check skipped (no adoption figure to compare against)');
+  } else if (deep && downloads !== null && downloads < 10_000) {
+    const { twin, failed } = await findPopularTwin(name, downloads);
+    if (failed) gaps.push(`impersonation check incomplete (${failed})`);
     if (twin) {
       // An exact core-name collision is the textbook slopsquat and must be
       // damning on its own; a near-miss still warrants a hard look.
@@ -138,12 +160,21 @@ export async function inspectPackage(name, { deep = true } = {}) {
     }
   }
 
-  const verdict = score >= 60 ? VERDICTS.DANGER : score >= 25 ? VERDICTS.CAUTION : VERDICTS.SAFE;
+  if (gaps.length) {
+    signals.push({ id: 'incomplete_check', severity: 'medium', detail: `Checks that did not complete: ${gaps.join('; ')}.` });
+  }
+
+  let verdict = score >= 60 ? VERDICTS.DANGER : score >= 25 ? VERDICTS.CAUTION : VERDICTS.SAFE;
+  // A clean score reached without the evidence is not a clean bill of
+  // health. Anything short of DANGER degrades to UNKNOWN so a rate limit
+  // can never wave a package through.
+  if (gaps.length && verdict !== VERDICTS.DANGER) verdict = VERDICTS.UNKNOWN;
 
   return {
     name, verdict, score, exists: true,
     version: latestTag,
     ageDays, weeklyDownloads: downloads,
+    complete: gaps.length === 0,
     repository: d.repository?.url || latest?.repository?.url || null,
     signals,
     summary: buildSummary(name, verdict, signals, downloads),
@@ -152,6 +183,10 @@ export async function inspectPackage(name, { deep = true } = {}) {
 
 function buildSummary(name, verdict, signals, downloads) {
   const dl = downloads?.toLocaleString() ?? 'unknown';
+  if (verdict === VERDICTS.UNKNOWN) {
+    const why = signals.filter((s) => s.id === 'incomplete_check').map((s) => s.detail);
+    return `"${name}" could not be fully verified. ${why.join(' ')} Do not treat this as safe — re-run the check.`;
+  }
   if (verdict === VERDICTS.SAFE) {
     // Say "no risk signals" only when that is actually true — a SAFE verdict
     // can still carry minor ones, and claiming otherwise misleads the agent.
@@ -165,17 +200,22 @@ function buildSummary(name, verdict, signals, downloads) {
 
 /** For a name that does not exist, what did the model probably mean? */
 export async function findRealPackage(name) {
-  const results = await searchPackages(coreName(name), 10);
+  const { results } = await searchPackages(coreName(name), 10);
   return results
     .map((r) => ({ ...r, distance: editDistance(coreName(name), coreName(r.name), 8) }))
     .sort((a, b) => a.distance - b.distance)
     .slice(0, 5);
 }
 
-/** Find a much-more-popular package with a confusingly similar name. */
+/**
+ * Find a much-more-popular package with a confusingly similar name.
+ * Reports `failed` when the comparison could not be completed, so a
+ * rate-limited lookup is never mistaken for "nothing suspicious found".
+ */
 export async function findPopularTwin(name, ownDownloads) {
   const core = coreName(name);
-  const candidates = await searchPackages(core, 10);
+  const { results: candidates, failed } = await searchPackages(core, 10);
+  if (failed) return { twin: null, failed };
   for (const c of candidates) {
     if (c.name === name) continue;
     // Distance 0 means a different package resolves to the SAME core name
@@ -183,10 +223,11 @@ export async function findPopularTwin(name, ownDownloads) {
     // strongest impersonation signal there is, not a self-match to skip.
     const dist = editDistance(coreName(c.name), core, 4);
     if (dist > 3) continue;
-    const dl = await fetchWeeklyDownloads(c.name);
+    const { downloads: dl, failed: dlFailed } = await fetchWeeklyDownloads(c.name);
+    if (dlFailed) return { twin: null, failed: dlFailed };
     if (dl === null) continue;
     const ratio = dl / Math.max(ownDownloads, 1);
-    if (dl > 5_000 && ratio > 20) return { name: c.name, downloads: dl, distance: dist, ratio };
+    if (dl > 5_000 && ratio > 20) return { twin: { name: c.name, downloads: dl, distance: dist, ratio } };
   }
-  return null;
+  return { twin: null };
 }

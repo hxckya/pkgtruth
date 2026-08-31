@@ -126,7 +126,31 @@ Read these before trusting it:
 --fail-on <level>   danger (default) | caution
 ```
 
+`--fail-on caution` also blocks packages that could not be verified at all,
+since "we could not check" is not a pass.
+
 Exit codes: `0` clean, `1` blocking packages found, `2` usage or runtime error.
+
+## Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PKGTRUTH_TIMEOUT_MS` | `8000` | Per-request timeout |
+| `PKGTRUTH_RETRIES` | `3` | Retries for 429/5xx/network errors |
+| `PKGTRUTH_MAX_CONCURRENCY` | per-host | Override request pacing |
+| `PKGTRUTH_REGISTRY` | npm | Alternate registry |
+| `PKGTRUTH_DOWNLOADS_API` | npm | Alternate downloads API |
+
+### On speed
+
+A cold scan of ~18 dependencies takes a few seconds. Adoption figures come
+from npm's downloads API, which rate-limits bursts and cannot batch scoped
+names, so those lookups are paced deliberately. Results are cached in-process
+and the bulk endpoint covers unscoped names in a single request.
+
+The tool is paced rather than fast on purpose: an unpaced scan draws 429s, and
+a rate-limited lookup produces `UNKNOWN`, not `SAFE`. A verdict that flickers
+between runs is worse than one that takes an extra second.
 
 ## License
 

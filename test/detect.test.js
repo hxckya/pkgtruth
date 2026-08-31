@@ -39,3 +39,24 @@ test('the legitimate twin is NOT flagged', { skip: !online }, async () => {
   const r = await inspectPackage('eslint-plugin-unused-imports');
   assert.equal(r.verdict, 'SAFE');
 });
+
+// Regression: an early build let a rate-limited downloads API silently
+// weaken a verdict. A check that could not run must never read as SAFE.
+test('unreachable downloads API yields UNKNOWN, never SAFE', async () => {
+  const prev = { api: process.env.PKGTRUTH_DOWNLOADS_API, retries: process.env.PKGTRUTH_RETRIES, timeout: process.env.PKGTRUTH_TIMEOUT_MS };
+  process.env.PKGTRUTH_DOWNLOADS_API = 'https://127.0.0.1:9';
+  process.env.PKGTRUTH_RETRIES = '0';
+  process.env.PKGTRUTH_TIMEOUT_MS = '1500';
+  try {
+    const { inspectPackage: fresh } = await import(`../src/detect.js?fault=${Date.now()}`);
+    const r = await fresh('express');
+    assert.notEqual(r.verdict, 'SAFE');
+    assert.equal(r.verdict, 'UNKNOWN');
+    assert.equal(r.complete, false);
+    assert.ok(r.signals.some((s) => s.id === 'incomplete_check'));
+  } finally {
+    for (const [k, v] of [['PKGTRUTH_DOWNLOADS_API', prev.api], ['PKGTRUTH_RETRIES', prev.retries], ['PKGTRUTH_TIMEOUT_MS', prev.timeout]]) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+  }
+});

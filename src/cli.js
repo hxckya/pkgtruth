@@ -6,6 +6,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { inspectPackage } from './detect.js';
+import { primeDownloads } from './registry.js';
 
 const BLOCKING = new Set(['HALLUCINATED', 'DANGER']);
 
@@ -101,7 +102,9 @@ export async function runCli(argv) {
     process.stderr.write(`pkgtruth: --fail-on must be "danger" or "caution"\n`);
     return 2;
   }
-  const blocking = failOn === 'caution' ? new Set([...BLOCKING, 'CAUTION']) : BLOCKING;
+  // Strict mode also refuses packages that could not be verified at all —
+  // "we could not check" is not a pass.
+  const blocking = failOn === 'caution' ? new Set([...BLOCKING, 'CAUTION', 'UNKNOWN']) : BLOCKING;
 
   const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--fail-on');
   const cmd = positional[0];
@@ -132,7 +135,9 @@ export async function runCli(argv) {
     return 2;
   }
 
-  const results = await mapLimit([...new Set(names)], 5, (n) => inspectPackage(n));
+  const unique = [...new Set(names)];
+  await primeDownloads(unique);
+  const results = await mapLimit(unique, 5, (n) => inspectPackage(n));
   results.sort((a, b) => (ORDER[a.verdict] ?? 9) - (ORDER[b.verdict] ?? 9));
   const bad = results.filter((r) => blocking.has(r.verdict));
 
@@ -141,11 +146,15 @@ export async function runCli(argv) {
   } else {
     if (origin) process.stdout.write(`${c('90', origin)}\n\n`);
     process.stdout.write(render(results));
-    process.stdout.write(
-      bad.length
-        ? `${PAINT.DANGER(`⛔ ${bad.length} of ${results.length} package(s) blocked`)}: ${bad.map((r) => r.name).join(', ')}\n`
-        : `${PAINT.SAFE(`✅ ${results.length} package(s) checked, nothing blocking`)}\n`,
-    );
+    const unverified = results.filter((r) => r.verdict === 'UNKNOWN');
+    if (bad.length) {
+      process.stdout.write(`${PAINT.DANGER(`⛔ ${bad.length} of ${results.length} package(s) blocked`)}: ${bad.map((r) => r.name).join(', ')}\n`);
+    } else if (unverified.length) {
+      // Never sign off with a checkmark on packages we could not check.
+      process.stdout.write(`${PAINT.UNKNOWN(`⚠️  ${unverified.length} of ${results.length} package(s) could not be verified`)}: ${unverified.map((r) => r.name).join(', ')}\n`);
+    } else {
+      process.stdout.write(`${PAINT.SAFE(`✅ ${results.length} package(s) checked, nothing blocking`)}\n`);
+    }
   }
   return bad.length ? 1 : 0;
 }
