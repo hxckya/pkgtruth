@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.hxckya/pkgtruth",
+  "description": "Catches hallucinated and slopsquatted npm packages before an agent installs them.",
+  "repository": {
+    "url": "https://github.com/hxckya/pkgtruth",
+    "source": "github"
+  },
+  "version": "0.1.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "pkgtruth",
+      "version": "0.1.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "PKGTRUTH_REGISTRY",
+          "description": "Alternate npm registry to verify against. Defaults to https://registry.npmjs.org.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "PKGTRUTH_DOWNLOADS_API",
+          "description": "Alternate downloads API used for adoption figures. Defaults to https://api.npmjs.org.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "PKGTRUTH_CACHE_DIR",
+          "description": "Where adoption figures are cached between runs. Defaults to ~/.cache/pkgtruth.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        },
+        {
+          "name": "PKGTRUTH_TIMEOUT_MS",
+          "description": "Per-request timeout in milliseconds. Defaults to 8000.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number"
+        }
+      ]
+    }
+  ]
+}

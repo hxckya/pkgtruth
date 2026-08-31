@@ -1,6 +1,6 @@
 {
   "name": "pkgtruth",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Ground truth about npm packages for AI coding agents. Detects hallucinated and slopsquatted dependencies before they get installed.",
   "keywords": [
     "mcp",
@@ -45,5 +45,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.5.4"
-  }
+  },
+  "mcpName": "io.github.hxckya/pkgtruth"
 }
