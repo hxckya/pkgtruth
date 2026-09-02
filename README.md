@@ -31,6 +31,27 @@ The standing security advice is that agents with package-management
 capabilities should not install anything without a review gate. `pkgtruth` is
 that gate, in a form an agent can call on its own.
 
+## Found in the wild
+
+Two names a model plausibly produces, both live on npm today:
+
+| Name | What it is | Weekly installs | The real one |
+| --- | --- | --- | --- |
+| `types-node` | `0.0.1-security` — npm's placeholder after purging malware | 10 | `@types/node` (429M) |
+| `socket-io` | Deprecated since 2022, "use the socket.io package instead" | 1,486 | `socket.io` (18M) |
+
+`types-node` is what you get when a model drops the scope from `@types/node`.
+npm removed it for malicious code in December 2024 and it is still installed
+ten times a week.
+
+`socket-io` is not malicious — it is an abandoned package with a confusable
+name. That it takes 1,486 installs a week anyway is the point: a dot and a
+hyphen are enough.
+
+```bash
+npx pkgtruth check types-node socket-io
+```
+
 ## Install
 
 ### As an MCP server (for coding agents)
