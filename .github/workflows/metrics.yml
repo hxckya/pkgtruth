@@ -1,0 +1,63 @@
+name: Metrics
+
+# The owner is away for days at a time and the laptop is often closed, so
+# the numbers that decide this project's fate are collected here, on a
+# schedule nothing local can interrupt. Each run appends one row.
+on:
+  schedule:
+    - cron: '0 0 * * 1'   # Mondays 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Collect
+        id: m
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          WEEK=$(date -u -d '7 days ago' +%F)
+          TODAY=$(date -u +%F)
+          DL=$(curl -sf "https://api.npmjs.org/downloads/point/${WEEK}:${TODAY}/pkgtruth" | jq -r '.downloads // 0')
+          REPO=$(gh api repos/${{ github.repository }})
+          STARS=$(echo "$REPO" | jq -r .stargazers_count)
+          FORKS=$(echo "$REPO" | jq -r .forks_count)
+          ISSUES=$(echo "$REPO" | jq -r .open_issues_count)
+          VIEWS=$(gh api repos/${{ github.repository }}/traffic/views | jq -r '"\(.count)/\(.uniques)"')
+          CLONES=$(gh api repos/${{ github.repository }}/traffic/clones | jq -r '"\(.count)/\(.uniques)"')
+          MCP=$(curl -sf "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.hxckya%2Fpkgtruth/versions/latest" \
+                | jq -r '._meta["io.modelcontextprotocol.registry/official"].status // "?"')
+          echo "row=| $TODAY | $DL | $STARS | $FORKS | $ISSUES | $VIEWS | $CLONES | $MCP |" >> "$GITHUB_OUTPUT"
+
+      - name: Append to METRICS.md
+        run: |
+          if [ ! -f METRICS.md ]; then
+            {
+              echo "# Weekly metrics"
+              echo
+              echo "Collected every Monday by \`.github/workflows/metrics.yml\`."
+              echo "Kill review: **2026-11-30** — needs 30+ stars, or downloads sustained"
+              echo "above the bot floor (~0–15/day observed 2026-09-03..09), or any real"
+              echo "issue/PR/fork. Downloads on publish day were scanner traffic; do not"
+              echo "read the raw count as adoption."
+              echo
+              echo "| week ending | npm dl (7d) | stars | forks | issues | views (total/uniq) | clones (total/uniq) | mcp registry |"
+              echo "|---|---|---|---|---|---|---|---|"
+            } > METRICS.md
+          fi
+          echo "${{ steps.m.outputs.row }}" >> METRICS.md
+
+      - name: Commit
+        run: |
+          git config user.name  "metrics-bot"
+          git config user.email "metrics-bot@users.noreply.github.com"
+          git add METRICS.md
+          git diff --cached --quiet || git commit -m "metrics: week ending $(date -u +%F)"
+          git push
