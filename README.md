@@ -92,8 +92,8 @@ something is blocking, so it drops straight into CI.
 
 ### As a pull-request gate (GitHub Action)
 
-[`hxckya/pkgtruth-action`](https://github.com/hxckya/pkgtruth-action) runs the
-scan on every pull request, posts one sticky comment with the evidence, and
+[`hxckya/pkgtruth-action`](https://github.com/marketplace/actions/pkgtruth) (on the
+GitHub Marketplace) runs the scan on every pull request, posts one sticky comment with the evidence, and
 fails the check on `HALLUCINATED` or `DANGER`:
 
 ```yaml
