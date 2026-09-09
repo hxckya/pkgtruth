@@ -1,0 +1,45 @@
+name: Dependency gate
+
+# Dogfood for hxckya/pkgtruth-action. Two jobs, two expectations:
+#   real     — this repo's own manifest must pass.
+#   fixture  — a manifest seeded with a purged name and a hallucinated one
+#              must be blocked, and the step must report why.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  real:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hxckya/pkgtruth-action@main
+        with:
+          path: '.'
+          comment: 'false'
+
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - id: gate
+        uses: hxckya/pkgtruth-action@main
+        continue-on-error: true
+        with:
+          path: 'test/fixtures/slopsquat'
+          comment: 'true'
+      - name: Assert the gate blocked the fixture
+        env:
+          OUTCOME: ${{ steps.gate.outcome }}
+          BLOCKING: ${{ steps.gate.outputs.blocking }}
+          TOTAL: ${{ steps.gate.outputs.total }}
+        run: |
+          echo "outcome=$OUTCOME blocking=$BLOCKING total=$TOTAL"
+          [ "$OUTCOME" = "failure" ] || { echo "::error::gate did not fail on a bad manifest"; exit 1; }
+          [ "${BLOCKING:-0}" -ge 2 ]  || { echo "::error::expected >=2 blocking, got $BLOCKING"; exit 1; }
