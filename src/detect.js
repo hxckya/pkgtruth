@@ -45,7 +45,17 @@ export async function inspectPackage(name, { deep = true } = {}) {
   const pack = await fetchPackument(name);
 
   if (pack.exists === null) {
-    return { name, verdict: VERDICTS.UNKNOWN, score: null, signals: [{ id: 'registry_unreachable', severity: 'info', detail: pack.error }], summary: 'Registry unreachable — could not verify. Do not treat as safe.' };
+    // Same contract as a partial verdict below: `complete` is false and an
+    // incomplete_check signal is present, so a consumer can test one field
+    // regardless of which lookup failed.
+    return {
+      name, verdict: VERDICTS.UNKNOWN, score: null, complete: false,
+      signals: [
+        { id: 'registry_unreachable', severity: 'info', detail: pack.error },
+        { id: 'incomplete_check', severity: 'medium', detail: `Checks that did not complete: registry lookup (${pack.error}).` },
+      ],
+      summary: 'Registry unreachable — could not verify. Do not treat as safe.',
+    };
   }
 
   // --- Case 1: the package simply does not exist ------------------------

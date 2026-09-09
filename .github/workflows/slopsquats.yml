@@ -1,0 +1,39 @@
+name: Slopsquat watch
+
+# Regenerates SLOPSQUATS.md from scripts/seeds.txt every week. The report is
+# the tool running on the ecosystem it exists for; nothing local is needed.
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Mondays 03:00 UTC, after the metrics run
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      - name: Restore adoption cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pkgtruth
+          key: pkgtruth-cache-${{ github.run_id }}
+          restore-keys: pkgtruth-cache-
+      - name: Hunt
+        run: node scripts/hunt.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name  "slopsquat-watch"
+          git config user.email "slopsquat-watch@users.noreply.github.com"
+          git add SLOPSQUATS.md
+          git diff --cached --quiet && echo "no change" && exit 0
+          git commit -m "slopsquats: $(date -u +%F)"
+          git push

@@ -52,6 +52,12 @@ hyphen are enough.
 npx pkgtruth check types-node socket-io
 ```
 
+Those two came from a hand check of twenty names. The systematic version —
+242 well-known packages, every plausible garbling of each, regenerated every
+Monday — lives in **[SLOPSQUATS.md](SLOPSQUATS.md)**. Section A there is
+npm security placeholders alone: names npm purged for malware that are still
+being installed this week.
+
 ## Install
 
 ### As an MCP server (for coding agents)
