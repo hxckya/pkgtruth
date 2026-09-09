@@ -30,11 +30,11 @@ jobs:
           STARS=$(echo "$REPO" | jq -r .stargazers_count)
           FORKS=$(echo "$REPO" | jq -r .forks_count)
           ISSUES=$(echo "$REPO" | jq -r .open_issues_count)
-          VIEWS=$(gh api repos/${{ github.repository }}/traffic/views | jq -r '"\(.count)/\(.uniques)"')
-          CLONES=$(gh api repos/${{ github.repository }}/traffic/clones | jq -r '"\(.count)/\(.uniques)"')
+          # Traffic endpoints need push-scope on a user token; the workflow
+          # token cannot read them, so they are left out rather than logged as null.
           MCP=$(curl -sf "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.hxckya%2Fpkgtruth/versions/latest" \
                 | jq -r '._meta["io.modelcontextprotocol.registry/official"].status // "?"')
-          echo "row=| $TODAY | $DL | $STARS | $FORKS | $ISSUES | $VIEWS | $CLONES | $MCP |" >> "$GITHUB_OUTPUT"
+          echo "row=| $TODAY | $DL | $STARS | $FORKS | $ISSUES | $MCP |" >> "$GITHUB_OUTPUT"
 
       - name: Append to METRICS.md
         run: |
@@ -48,8 +48,8 @@ jobs:
               echo "issue/PR/fork. Downloads on publish day were scanner traffic; do not"
               echo "read the raw count as adoption."
               echo
-              echo "| week ending | npm dl (7d) | stars | forks | issues | views (total/uniq) | clones (total/uniq) | mcp registry |"
-              echo "|---|---|---|---|---|---|---|---|"
+              echo "| week ending | npm dl (7d) | stars | forks | issues | mcp registry |"
+              echo "|---|---|---|---|---|---|"
             } > METRICS.md
           fi
           echo "${{ steps.m.outputs.row }}" >> METRICS.md
