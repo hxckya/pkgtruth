@@ -88,12 +88,32 @@ npx pkgtruth scan .
 ```
 
 `scan` reads every dependency in a `package.json` and exits non-zero when
-something is blocking, so it drops straight into CI:
+something is blocking, so it drops straight into CI.
+
+### As a pull-request gate (GitHub Action)
+
+[`hxckya/pkgtruth-action`](https://github.com/hxckya/pkgtruth-action) runs the
+scan on every pull request, posts one sticky comment with the evidence, and
+fails the check on `HALLUCINATED` or `DANGER`:
 
 ```yaml
-- name: Block hallucinated and slopsquatted dependencies
-  run: npx pkgtruth scan . --fail-on danger
+on:
+  pull_request:
+    paths: ['package.json', '**/package.json']
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  pkgtruth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: hxckya/pkgtruth-action@v1
 ```
+
+This repository gates itself with it — see
+[`.github/workflows/gate.yml`](.github/workflows/gate.yml), which also proves
+the gate can fail by running it against a deliberately bad fixture.
 
 ## What it checks
 

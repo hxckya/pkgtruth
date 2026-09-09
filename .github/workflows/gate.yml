@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: hxckya/pkgtruth-action@main
+      - uses: hxckya/pkgtruth-action@v1
         with:
           path: '.'
           comment: 'false'
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - id: gate
-        uses: hxckya/pkgtruth-action@main
+        uses: hxckya/pkgtruth-action@v1
         continue-on-error: true
         with:
           path: 'test/fixtures/slopsquat'
