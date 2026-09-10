@@ -68,7 +68,10 @@ Those two came from a hand check of twenty names. The systematic version —
 242 well-known packages, every plausible garbling of each, regenerated every
 Monday — lives in **[SLOPSQUATS.md](SLOPSQUATS.md)**. Section A there is
 npm security placeholders alone: names npm purged for malware that are still
-being installed this week.
+being installed this week. Weeks in which names enter or leave the list are
+published as [releases](https://github.com/hxckya/pkgtruth/releases), so the
+[releases feed](https://github.com/hxckya/pkgtruth/releases.atom) is a way to
+follow the live list without watching the repository.
 
 ## Install
 
