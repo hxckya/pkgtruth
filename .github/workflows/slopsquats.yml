@@ -27,13 +27,34 @@ jobs:
           path: ~/.cache/pkgtruth
           key: pkgtruth-cache-${{ github.run_id }}
           restore-keys: pkgtruth-cache-
+      - name: Keep last week's report for the diff
+        run: cp SLOPSQUATS.md /tmp/slopsquats-previous.md
       - name: Hunt
         run: node scripts/hunt.mjs
       - name: Commit if changed
+        id: commit
         run: |
           git config user.name  "slopsquat-watch"
           git config user.email "slopsquat-watch@users.noreply.github.com"
           git add SLOPSQUATS.md
-          git diff --cached --quiet && echo "no change" && exit 0
+          if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; echo "no change"; exit 0; fi
           git commit -m "slopsquats: $(date -u +%F)"
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      # A file that changes silently has no audience. Each week with a real
+      # change becomes a Release: watchers see it, and the releases Atom feed
+      # is something a person can subscribe to.
+      - name: Publish the week's changes as a release
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          node scripts/report-diff.mjs /tmp/slopsquats-previous.md SLOPSQUATS.md > /tmp/notes.md
+          rc=$?
+          set -e
+          if [ "$rc" -eq 3 ]; then echo "counts only; no names entered or left — no release"; exit 0; fi
+          [ "$rc" -eq 0 ] || { echo "::error::report-diff failed ($rc)"; exit 1; }
+          TAG="report-$(date -u +%F)"
+          gh release create "$TAG" --target "$(git rev-parse HEAD)" \
+            --title "Live slopsquats — $(date -u +%F)" --notes-file /tmp/notes.md
