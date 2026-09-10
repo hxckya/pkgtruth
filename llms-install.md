@@ -71,6 +71,13 @@ agent thought to call a tool first. In `~/.claude/settings.json`:
 Non-install commands pass through with no output. A blocked command returns
 exit 2 and a `permissionDecision: "deny"` whose reason names the real package.
 
+Or install server and hook together as a plugin:
+
+```
+/plugin marketplace add hxckya/pkgtruth
+/plugin install pkgtruth@pkgtruth
+```
+
 ## Optional configuration
 
 All optional; defaults work for the public npm registry.
