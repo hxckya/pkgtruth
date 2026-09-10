@@ -1,17 +1,19 @@
 {
   "name": "pkgtruth",
-  "version": "0.1.3",
-  "description": "Ground truth about npm packages for AI coding agents. Detects hallucinated and slopsquatted dependencies before they get installed.",
+  "version": "0.2.0",
+  "description": "Ground truth about npm and PyPI packages for AI coding agents. Detects hallucinated and slopsquatted dependencies before they get installed.",
   "keywords": [
+    "ai-agent",
+    "dependencies",
+    "hallucination",
     "mcp",
     "mcp-server",
-    "slopsquatting",
-    "supply-chain",
     "npm",
+    "pypi",
+    "python",
     "security",
-    "ai-agent",
-    "hallucination",
-    "dependencies"
+    "slopsquatting",
+    "supply-chain"
   ],
   "license": "MIT",
   "author": "hxckya",
@@ -47,4 +49,4 @@
     "zod": "^4.5.4"
   },
   "mcpName": "io.github.hxckya/pkgtruth"
-}
+}\n

@@ -5,7 +5,7 @@
 [![node](https://img.shields.io/node/v/pkgtruth)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/pkgtruth)](LICENSE)
 
-**Ground truth about npm packages, for AI coding agents and CI.**
+**Ground truth about npm and PyPI packages, for AI coding agents and CI.**
 
 ![pkgtruth catching a hallucinated package and a slopsquat](https://raw.githubusercontent.com/hxckya/pkgtruth/main/assets/demo.gif)
 
@@ -77,18 +77,20 @@ Two tools become available:
 
 | Tool | Use it when |
 | --- | --- |
-| `check_package` | About to add, import, or recommend one dependency |
-| `check_dependencies` | About to write a `package.json` or run an install command |
+| `check_package` | About to add, import, or recommend one dependency (`ecosystem: "npm" \| "pypi"`, default npm) |
+| `check_dependencies` | About to write a `package.json` / `requirements.txt` or run an install command |
 
 ### As a CLI (for humans and CI)
 
 ```bash
-npx pkgtruth check express unused-imports
-npx pkgtruth scan .
+npx pkgtruth check express unused-imports          # npm (default)
+npx pkgtruth check -e pypi requests sklearn        # PyPI
+npx pkgtruth scan .                                 # every manifest in the directory
 ```
 
-`scan` reads every dependency in a `package.json` and exits non-zero when
-something is blocking, so it drops straight into CI.
+`scan` reads `package.json`, `requirements*.txt` and `pyproject.toml`
+(PEP 621 and Poetry), checks each against its own registry, and exits
+non-zero when something is blocking, so it drops straight into CI.
 
 ### As a pull-request gate (GitHub Action)
 
@@ -121,7 +123,8 @@ the gate can fail by running it against a deliberately bad fixture.
 | --- | --- |
 | **Not in registry** | The name is fabricated. Nothing to install. |
 | **npm security placeholder** | npm removed malicious code published under this name. |
-| **Impersonates a popular package** | A near-identical name with a fraction of the adoption. |
+| **Impersonates a popular package** | A near-identical name with a fraction of the adoption — or a deprecation notice that itself names the package you meant (`sklearn` → `scikit-learn`, `pytorch` → `torch`). |
+| **Yanked** (PyPI) | Every file of the latest release was yanked by its maintainer. |
 | **Install-time scripts** | `preinstall`/`install`/`postinstall` run code on `npm install`. |
 | **Deprecated** | Upstream says stop using it. |
 | **Very new / almost no adoption** | Days old with single-digit installs. |
@@ -152,7 +155,12 @@ needed for the server. `npx pkgtruth` starts immediately.
 
 Read these before trusting it:
 
-- **npm only.** PyPI, crates.io, and Go modules are not covered yet.
+- **npm and PyPI only.** crates.io, Go modules, RubyGems are not covered yet.
+- **PyPI has no purge marker.** npm leaves a `-security` placeholder where it
+  removed malware; PyPI deletes the project, so a purged PyPI name simply
+  reads as `HALLUCINATED`. PyPI also has no search API — near-twins are found
+  against a daily snapshot of the top 15,000 projects by downloads, so an
+  impostor of an obscure package will not be caught.
 - **Registry metadata only.** It does not analyze package source code, so a
   legitimate-looking package with a malicious payload can still pass.
 - **Not a replacement for `npm audit` or Snyk.** Those find known CVEs in code
@@ -182,6 +190,8 @@ Exit codes: `0` clean, `1` blocking packages found, `2` usage or runtime error.
 | `PKGTRUTH_MAX_CONCURRENCY` | per-host | Override request pacing |
 | `PKGTRUTH_REGISTRY` | npm | Alternate registry |
 | `PKGTRUTH_DOWNLOADS_API` | npm | Alternate downloads API |
+| `PKGTRUTH_PYPI` / `PKGTRUTH_PYPISTATS` | pypi.org / pypistats.org | Alternate PyPI endpoints |
+| `PKGTRUTH_PYPI_TOP` | hugovk top-pypi-packages | Alternate popularity snapshot for PyPI twins |
 | `PKGTRUTH_CACHE_DIR` | `~/.cache/pkgtruth` | Where adoption figures are cached |
 | `PKGTRUTH_DISK_TTL_MS` | 6 hours | How long a cached figure stays usable |
 | `PKGTRUTH_NO_DISK_CACHE` | unset | Set to `1` to disable the cache |

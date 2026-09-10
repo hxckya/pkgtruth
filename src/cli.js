@@ -3,9 +3,8 @@
  * server, so a package blocked in an agent's gate is blocked in CI too.
  */
 
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
-import { inspectMany } from './detect.js';
+import { inspectMany, ECOSYSTEMS } from './detect.js';
+import { discoverManifests } from './manifests.js';
 import { primeDownloads, flushDiskCache } from './registry.js';
 
 const BLOCKING = new Set(['HALLUCINATED', 'DANGER']);
@@ -22,28 +21,12 @@ const PAINT = {
 
 const ORDER = { HALLUCINATED: 0, DANGER: 1, CAUTION: 2, UNKNOWN: 3, SAFE: 4 };
 
-/** Collect every dependency name from a package.json. */
-async function readManifest(dir) {
-  const file = path.resolve(dir.endsWith('package.json') ? dir : path.join(dir, 'package.json'));
-  let raw;
-  try {
-    raw = await readFile(file, 'utf8');
-  } catch {
-    throw new Error(`No package.json at ${file}`);
-  }
-  const pkg = JSON.parse(raw);
-  const names = new Set();
-  for (const field of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
-    for (const name of Object.keys(pkg[field] || {})) names.add(name);
-  }
-  return { file, names: [...names] };
-}
-
 function render(results) {
   const lines = [];
   for (const r of results) {
     const paint = PAINT[r.verdict] || ((s) => s);
-    lines.push(`${paint(r.verdict.padEnd(13))} ${r.name}${r.version ? c('90', `@${r.version}`) : ''}`);
+    const tag = r.ecosystem && r.ecosystem !== 'npm' ? c('90', ` [${r.ecosystem}]`) : '';
+    lines.push(`${paint(r.verdict.padEnd(13))} ${r.name}${r.version ? c('90', `@${r.version}`) : ''}${tag}`);
     // The summary is a prose join of these same signals, so printing both
     // says everything twice. Show the itemised evidence where there is any,
     // and fall back to the sentence when there is nothing to itemise.
@@ -64,10 +47,13 @@ const HELP = `pkgtruth — ground truth about npm packages, for agents and CI
 USAGE
   pkgtruth                        Run as an MCP server over stdio (for coding agents)
   pkgtruth check <pkg...>         Check one or more package names
-  pkgtruth scan [dir]             Check every dependency in a package.json
+  pkgtruth scan [dir|manifest]    Check every dependency in package.json,
+                                  requirements*.txt and/or pyproject.toml
   pkgtruth --help                 Show this help
 
 OPTIONS
+  --ecosystem <npm|pypi>, -e      Registry for 'check' (default npm). 'scan'
+                                  picks it from the manifest.
   --json                          Emit JSON instead of human output
   --fail-on <level>               Exit non-zero at this level or worse.
                                   danger (default) | caution
@@ -79,6 +65,7 @@ EXIT CODES
 
 EXAMPLES
   npx pkgtruth check express unused-imports
+  npx pkgtruth check -e pypi requests sklearn
   npx pkgtruth scan .
   npx pkgtruth scan . --fail-on caution --json
 `;
@@ -88,6 +75,12 @@ export async function runCli(argv) {
   const json = args.includes('--json');
   const failIdx = args.indexOf('--fail-on');
   const failOn = failIdx !== -1 ? args[failIdx + 1] : 'danger';
+  const ecoIdx = Math.max(args.indexOf('--ecosystem'), args.indexOf('-e'));
+  const ecosystem = ecoIdx !== -1 ? args[ecoIdx + 1] : 'npm';
+  if (!ECOSYSTEMS[ecosystem]) {
+    process.stderr.write(`pkgtruth: --ecosystem must be one of ${Object.keys(ECOSYSTEMS).join(', ')}\n`);
+    return 2;
+  }
   if (!['danger', 'caution'].includes(failOn)) {
     process.stderr.write(`pkgtruth: --fail-on must be "danger" or "caution"\n`);
     return 2;
@@ -96,27 +89,30 @@ export async function runCli(argv) {
   // "we could not check" is not a pass.
   const blocking = failOn === 'caution' ? new Set([...BLOCKING, 'CAUTION', 'UNKNOWN']) : BLOCKING;
 
-  const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--fail-on');
+  const positional = args.filter((a, i) => !a.startsWith('-') && args[i - 1] !== '--fail-on' && args[i - 1] !== '--ecosystem' && args[i - 1] !== '-e');
   const cmd = positional[0];
 
-  let names;
-  let origin = '';
+  // One batch per ecosystem: { ecosystem, file, names }
+  let batches;
   if (cmd === 'check') {
-    names = positional.slice(1);
+    const names = positional.slice(1);
     if (!names.length) {
       process.stderr.write('pkgtruth: `check` needs at least one package name\n');
       return 2;
     }
+    batches = [{ ecosystem, file: '', names }];
   } else if (cmd === 'scan') {
     try {
-      const m = await readManifest(positional[1] || '.');
-      names = m.names;
-      origin = m.file;
+      batches = await discoverManifests(positional[1] || '.');
     } catch (err) {
       process.stderr.write(`pkgtruth: ${err.message}\n`);
       return 2;
     }
-    if (!names.length) {
+    if (!batches.length) {
+      process.stderr.write(`pkgtruth: No package.json, requirements*.txt or pyproject.toml at ${positional[1] || '.'}\n`);
+      return 2;
+    }
+    if (!batches.some((b) => b.names.length)) {
       process.stdout.write('No dependencies declared.\n');
       return 0;
     }
@@ -125,11 +121,16 @@ export async function runCli(argv) {
     return 2;
   }
 
-  const unique = [...new Set(names)];
-  await primeDownloads(unique);
-  const results = await inspectMany(unique, { concurrency: 5 });
+  const results = [];
+  for (const b of batches) {
+    const unique = [...new Set(b.names)];
+    if (!unique.length) continue;
+    if (b.ecosystem === 'npm') await primeDownloads(unique);
+    results.push(...await inspectMany(unique, { ecosystem: b.ecosystem, concurrency: 5 }));
+  }
   results.sort((a, b) => (ORDER[a.verdict] ?? 9) - (ORDER[b.verdict] ?? 9));
   const bad = results.filter((r) => blocking.has(r.verdict));
+  const origin = batches.map((b) => b.file).filter(Boolean).join(', ');
 
   if (json) {
     process.stdout.write(JSON.stringify({ origin, total: results.length, blocking: bad.length, results }, null, 2) + '\n');

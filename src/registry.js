@@ -125,7 +125,7 @@ async function fetchWithRetry(url) {
   return last;
 }
 
-async function getJson(url) {
+export async function getJson(url) {
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
 

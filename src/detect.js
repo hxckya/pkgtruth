@@ -4,11 +4,24 @@
  * Design rule: every verdict must be explainable by concrete, checkable
  * facts. An agent acting on "DANGER" deserves to know exactly why, and a
  * human reviewing the agent deserves to audit the reasoning.
+ *
+ * Ecosystem-specific fetching lives in ./ecosystems/*.js; this file scores
+ * the normalised shape they return, so npm and PyPI are judged by the same
+ * rules wherever the same evidence exists.
  */
 
-import { fetchPackument, fetchWeeklyDownloads, searchPackages } from './registry.js';
+import * as npm from './ecosystems/npm.js';
+import * as pypi from './ecosystems/pypi.js';
 
 const DAY = 86_400_000;
+
+export const ECOSYSTEMS = { npm, pypi };
+
+export function ecosystemFor(id = 'npm') {
+  const eco = ECOSYSTEMS[id];
+  if (!eco) throw new Error(`Unknown ecosystem "${id}". Known: ${Object.keys(ECOSYSTEMS).join(', ')}`);
+  return eco;
+}
 
 /** Levenshtein distance, capped for early exit on hopeless pairs. */
 export function editDistance(a, b, cap = 4) {
@@ -29,61 +42,55 @@ export function editDistance(a, b, cap = 4) {
   return prev[b.length];
 }
 
-/** Strip scope and common decoration so `eslint-plugin-x` ~ `x`. */
-function coreName(name) {
-  return name.replace(/^@[^/]+\//, '').replace(/^(eslint-plugin-|babel-plugin-|@types\/)/, '');
-}
-
 const VERDICTS = { SAFE: 'SAFE', CAUTION: 'CAUTION', DANGER: 'DANGER', HALLUCINATED: 'HALLUCINATED', UNKNOWN: 'UNKNOWN' };
 
 /**
  * Inspect one package name.
+ * @param {string} name
+ * @param {{ ecosystem?: 'npm'|'pypi', deep?: boolean }} [opts]
  * @returns {Promise<object>} verdict + the evidence behind it
  */
-export async function inspectPackage(name, { deep = true } = {}) {
+export async function inspectPackage(name, { ecosystem = 'npm', deep = true } = {}) {
+  const eco = ecosystemFor(ecosystem);
   const signals = [];
-  const pack = await fetchPackument(name);
+  const pkg = await eco.fetchPackage(name);
 
-  if (pack.exists === null) {
+  if (pkg.exists === null) {
     // Same contract as a partial verdict below: `complete` is false and an
     // incomplete_check signal is present, so a consumer can test one field
     // regardless of which lookup failed.
     return {
-      name, verdict: VERDICTS.UNKNOWN, score: null, complete: false,
+      name, ecosystem, verdict: VERDICTS.UNKNOWN, score: null, complete: false,
       signals: [
-        { id: 'registry_unreachable', severity: 'info', detail: pack.error },
-        { id: 'incomplete_check', severity: 'medium', detail: `Checks that did not complete: registry lookup (${pack.error}).` },
+        { id: 'registry_unreachable', severity: 'info', detail: pkg.error },
+        { id: 'incomplete_check', severity: 'medium', detail: `Checks that did not complete: registry lookup (${pkg.error}).` },
       ],
       summary: 'Registry unreachable — could not verify. Do not treat as safe.',
     };
   }
 
   // --- Case 1: the package simply does not exist ------------------------
-  if (pack.exists === false) {
-    const near = deep ? await findRealPackage(name) : [];
+  if (pkg.exists === false) {
+    const near = deep ? await eco.findRealPackage(name, editDistance) : [];
     return {
-      name,
+      name, ecosystem,
       verdict: VERDICTS.HALLUCINATED,
       score: 100,
       exists: false,
-      signals: [{ id: 'not_in_registry', severity: 'critical', detail: 'No such package on the npm registry.' }],
+      signals: [{ id: 'not_in_registry', severity: 'critical', detail: `No such package on ${eco.label}.` }],
       didYouMean: near,
       summary: near.length
         ? `"${name}" does not exist. Closest real packages: ${near.slice(0, 3).map((n) => n.name).join(', ')}.`
-        : `"${name}" does not exist on npm. Treat any code importing it as unverified.`,
+        : `"${name}" does not exist on ${eco.label}. Treat any code importing it as unverified.`,
     };
   }
 
   // --- Case 2: it exists — weigh how much to trust it -------------------
-  const d = pack.data;
-  const versions = Object.keys(d.versions || {});
-  const latestTag = d['dist-tags']?.latest;
-  const latest = latestTag ? d.versions?.[latestTag] : undefined;
-  const created = d.time?.created ? new Date(d.time.created) : null;
-  const modified = d.time?.modified ? new Date(d.time.modified) : null;
+  const created = pkg.created ? new Date(pkg.created) : null;
+  const modified = pkg.modified ? new Date(pkg.modified) : null;
   const ageDays = created ? Math.floor((Date.now() - created.getTime()) / DAY) : null;
   const staleDays = modified ? Math.floor((Date.now() - modified.getTime()) / DAY) : null;
-  const dlResult = await fetchWeeklyDownloads(name);
+  const dlResult = await eco.fetchWeeklyDownloads(name);
   const downloads = dlResult.downloads;
   // Every lookup that failed rather than answered. A verdict built on
   // missing evidence must say so instead of passing as a clean bill.
@@ -92,17 +99,17 @@ export async function inspectPackage(name, { deep = true } = {}) {
 
   let score = 0;
 
-  // npm unpublishes malicious packages and leaves a `x.y.z-security`
-  // placeholder in their place. That is not a heuristic — it is npm
-  // stating outright that this name was used for an attack.
-  if (/-security$/.test(latestTag || '') || /security placeholder|security holding/i.test(String(latest?.description || ''))) {
+  if (pkg.securityPlaceholder) {
     score += 70;
-    signals.push({ id: 'npm_security_placeholder', severity: 'critical', detail: `npm replaced this package with a security placeholder (${latestTag}). The name was used to publish malicious code.` });
+    signals.push({ id: 'npm_security_placeholder', severity: 'critical', detail: `npm replaced this package with a security placeholder (${pkg.securityPlaceholder}). The name was used to publish malicious code.` });
   }
-
-  if (d.deprecated || latest?.deprecated) {
+  if (pkg.deprecated) {
     score += 40;
-    signals.push({ id: 'deprecated', severity: 'high', detail: String(d.deprecated || latest.deprecated).slice(0, 200) });
+    signals.push({ id: 'deprecated', severity: 'high', detail: pkg.deprecated });
+  }
+  if (pkg.yanked) {
+    score += 30;
+    signals.push({ id: 'yanked', severity: 'high', detail: 'Every file of the latest release has been yanked by its maintainer.' });
   }
   if (ageDays !== null && ageDays < 30) {
     score += 30;
@@ -119,9 +126,7 @@ export async function inspectPackage(name, { deep = true } = {}) {
     signals.push({ id: 'low_adoption', severity: 'medium', detail: `${downloads} downloads last week.` });
   }
 
-  const scripts = latest?.scripts || {};
-  const installHooks = ['preinstall', 'install', 'postinstall'].filter((k) => scripts[k]);
-  if (installHooks.length) {
+  if (pkg.installScripts?.length) {
     // Native builds legitimately need install hooks, and the heavily used
     // ones (esbuild, sharp, bcrypt) are among the most scrutinised packages
     // on the registry. Scoring them like an unknown package trains people to
@@ -132,14 +137,14 @@ export async function inspectPackage(name, { deep = true } = {}) {
     signals.push({
       id: 'install_scripts',
       severity: weight === 0 ? 'info' : weight <= 10 ? 'medium' : 'high',
-      detail: `Runs on install: ${installHooks.map((h) => `${h}="${String(scripts[h]).slice(0, 80)}"`).join('; ')}`,
+      detail: `Runs on install: ${pkg.installScripts.join('; ')}`,
     });
   }
-  if (!d.repository && !latest?.repository) {
+  if (!pkg.repository) {
     score += 15;
     signals.push({ id: 'no_repository', severity: 'medium', detail: 'No source repository declared.' });
   }
-  if (versions.length <= 1) {
+  if (pkg.versionCount <= 1) {
     score += 10;
     signals.push({ id: 'single_version', severity: 'low', detail: 'Only one version ever published.' });
   }
@@ -150,14 +155,14 @@ export async function inspectPackage(name, { deep = true } = {}) {
 
   // Impersonation check: a far more popular near-twin is the classic
   // slopsquat shape, and the signal that matters most.
-  // The impersonation test is a ratio against our own adoption. Without a
-  // real download count that ratio is meaningless — treating "unknown" as
-  // zero makes every popular near-name look like a 100,000x impostor, which
-  // is how a rate limit turns into a wave of false accusations.
+  // The test is a ratio against our own adoption. Without a real download
+  // count that ratio is meaningless — treating "unknown" as zero makes every
+  // popular near-name look like a 100,000x impostor, which is how a rate
+  // limit turns into a wave of false accusations.
   if (deep && dlResult.failed) {
     gaps.push('impersonation check skipped (no adoption figure to compare against)');
   } else if (deep && downloads !== null && downloads < 10_000) {
-    const { twin, failed } = await findPopularTwin(name, downloads);
+    const { twin, failed } = await eco.findPopularTwin(name, editDistance, downloads);
     if (failed) gaps.push(`impersonation check incomplete (${failed})`);
     if (twin) {
       // An exact core-name collision is the textbook slopsquat and must be
@@ -167,6 +172,19 @@ export async function inspectPackage(name, { deep = true } = {}) {
         ? `resolves to the same name as "${twin.name}"`
         : `is ${twin.distance} edit(s) from "${twin.name}"`;
       signals.push({ id: 'impersonates_popular_package', severity: 'critical', detail: `Package ${how}, which has ${twin.downloads.toLocaleString()} weekly downloads (${Math.round(twin.ratio).toLocaleString()}x this one). Confirm you meant this package and not that one.` });
+    }
+  } else if (deep && pkg.deprecatedPointsTo && eco.normalizeName(pkg.deprecatedPointsTo) !== eco.normalizeName(name)) {
+    // The maintainer has already named the package this one is standing in
+    // for. That is stronger evidence than any edit distance — `sklearn` is
+    // nowhere near `scikit-learn` by spelling, and its own notice says so.
+    const target = pkg.deprecatedPointsTo;
+    const t = await eco.fetchWeeklyDownloads(target);
+    if (!t.failed && t.downloads !== null && downloads !== null) {
+      const ratio = t.downloads / Math.max(downloads, 1);
+      if (t.downloads > 5_000 && ratio > 20) {
+        score += 45;
+        signals.push({ id: 'impersonates_popular_package', severity: 'critical', detail: `Its own deprecation notice points at "${target}", which has ${t.downloads.toLocaleString()} weekly downloads (${Math.round(ratio).toLocaleString()}x this one). Installs of this name almost certainly belong there.` });
+      }
     }
   }
 
@@ -181,11 +199,11 @@ export async function inspectPackage(name, { deep = true } = {}) {
   if (gaps.length && verdict !== VERDICTS.DANGER) verdict = VERDICTS.UNKNOWN;
 
   return {
-    name, verdict, score, exists: true,
-    version: latestTag,
+    name, ecosystem, verdict, score, exists: true,
+    version: pkg.latest,
     ageDays, weeklyDownloads: downloads,
     complete: gaps.length === 0,
-    repository: d.repository?.url || latest?.repository?.url || null,
+    repository: pkg.repository,
     signals,
     summary: buildSummary(name, verdict, signals, downloads),
   };
@@ -208,54 +226,20 @@ function buildSummary(name, verdict, signals, downloads) {
   return `"${name}" — ${verdict}. ${top.join(' ')}`;
 }
 
-/** For a name that does not exist, what did the model probably mean? */
-export async function findRealPackage(name) {
-  const { results } = await searchPackages(coreName(name), 10);
-  return results
-    .map((r) => ({ ...r, distance: editDistance(coreName(name), coreName(r.name), 8) }))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 5);
-}
-
-/**
- * Find a much-more-popular package with a confusingly similar name.
- * Reports `failed` when the comparison could not be completed, so a
- * rate-limited lookup is never mistaken for "nothing suspicious found".
- */
-export async function findPopularTwin(name, ownDownloads) {
-  const core = coreName(name);
-  const { results: candidates, failed } = await searchPackages(core, 10);
-  if (failed) return { twin: null, failed };
-  for (const c of candidates) {
-    if (c.name === name) continue;
-    // Distance 0 means a different package resolves to the SAME core name
-    // — `unused-imports` vs `eslint-plugin-unused-imports`. That is the
-    // strongest impersonation signal there is, not a self-match to skip.
-    const dist = editDistance(coreName(c.name), core, 4);
-    if (dist > 3) continue;
-    const { downloads: dl, failed: dlFailed } = await fetchWeeklyDownloads(c.name);
-    if (dlFailed) return { twin: null, failed: dlFailed };
-    if (dl === null) continue;
-    const ratio = dl / Math.max(ownDownloads, 1);
-    if (dl > 5_000 && ratio > 20) return { twin: { name: c.name, downloads: dl, distance: dist, ratio } };
-  }
-  return { twin: null };
-}
-
 /**
  * Inspect many names with a bounded concurrency, then give every UNKNOWN a
  * second, slower pass. A burst large enough to draw 429s from the downloads
  * API leaves a tail of "could not verify"; most of it clears once the rate
  * window resets, and the gate should say so instead of shrugging.
  */
-export async function inspectMany(names, { concurrency = 4, retryUnknown = true, onProgress } = {}) {
+export async function inspectMany(names, { ecosystem = 'npm', concurrency = 4, retryUnknown = true, onProgress } = {}) {
   const unique = [...new Set(names)];
   const out = new Map();
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(concurrency, unique.length) }, async () => {
     while (next < unique.length) {
       const n = unique[next++];
-      out.set(n, await inspectPackage(n));
+      out.set(n, await inspectPackage(n, { ecosystem }));
       onProgress?.(out.size, unique.length);
     }
   }));
@@ -264,10 +248,14 @@ export async function inspectMany(names, { concurrency = 4, retryUnknown = true,
     if (again.length) {
       await new Promise((r) => setTimeout(r, 1500));
       for (const n of again) {
-        const r = await inspectPackage(n);
+        const r = await inspectPackage(n, { ecosystem });
         if (r.verdict !== 'UNKNOWN') out.set(n, r);
       }
     }
   }
   return unique.map((n) => out.get(n));
 }
+
+// Kept for callers that imported the npm-only helpers directly.
+export const findRealPackage = (name) => npm.findRealPackage(name, editDistance);
+export const findPopularTwin = (name, ownDownloads) => npm.findPopularTwin(name, editDistance, ownDownloads);

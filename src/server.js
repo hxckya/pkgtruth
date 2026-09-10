@@ -34,15 +34,18 @@ export function createServer() {
     {
       title: 'Check one npm package',
       description:
-        'Verify a single npm package before installing, importing, or recommending it. ' +
+        'Verify a single npm or PyPI package before installing, importing, or recommending it. ' +
         'Returns whether it actually exists, and flags slopsquatting (a low-adoption ' +
         'package impersonating a popular one), install-time scripts, deprecation, and ' +
         'abandonment. Call this whenever you are about to introduce a dependency you ' +
         'have not verified in this session.',
-      inputSchema: { name: z.string().describe('Exact npm package name, e.g. "express" or "@scope/pkg".') },
+      inputSchema: {
+        name: z.string().describe('Exact package name, e.g. "express", "@scope/pkg", or for PyPI "requests".'),
+        ecosystem: z.enum(['npm', 'pypi']).optional().describe('Registry to check against. Default npm.'),
+      },
     },
-    async ({ name }) => {
-      const r = await inspectPackage(name);
+    async ({ name, ecosystem = 'npm' }) => {
+      const r = await inspectPackage(name, { ecosystem });
       await flushDiskCache();
       return { content: [{ type: 'text', text: renderOne(r) }], structuredContent: r };
     },
@@ -53,17 +56,18 @@ export function createServer() {
     {
       title: 'Gate a whole dependency list',
       description:
-        'Verify many npm packages at once — use this before writing a package.json, ' +
+        'Verify many npm or PyPI packages at once — use this before writing a package.json or requirements.txt, ' +
         'running an install command, or handing a dependency list to a user. Results ' +
         'are sorted worst-first so anything hallucinated or dangerous surfaces at the top.',
       inputSchema: {
         names: z.array(z.string()).min(1).max(50).describe('Package names to verify (max 50).'),
+        ecosystem: z.enum(['npm', 'pypi']).optional().describe('Registry to check against. Default npm.'),
       },
     },
-    async ({ names }) => {
+    async ({ names, ecosystem = 'npm' }) => {
       const unique = [...new Set(names)];
-      await primeDownloads(unique);
-      const results = await inspectMany(unique, { concurrency: CONCURRENCY });
+      if (ecosystem === 'npm') await primeDownloads(unique);
+      const results = await inspectMany(unique, { ecosystem, concurrency: CONCURRENCY });
       results.sort((a, b) => (ORDER[a.verdict] ?? 9) - (ORDER[b.verdict] ?? 9));
 
       const blocking = results.filter((r) => r.verdict === 'HALLUCINATED' || r.verdict === 'DANGER');
