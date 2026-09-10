@@ -50,8 +50,20 @@ httpx = "^0.27"
 
 const online = process.env.PKGTRUTH_TEST_ONLINE === '1';
 
+// The CLI and MCP paths give an UNKNOWN a second pass after a pause; a
+// live test should get the same courtesy, or a throttled pypistats call
+// fails the suite for a package that is perfectly well understood.
+async function verdictOf(name, ecosystem) {
+  let r = await inspectPackage(name, { ecosystem });
+  if (r.verdict === 'UNKNOWN') {
+    await new Promise((res) => setTimeout(res, 2000));
+    r = await inspectPackage(name, { ecosystem });
+  }
+  return r;
+}
+
 test('pypi: a popular package is SAFE', { skip: !online }, async () => {
-  const r = await inspectPackage('requests', { ecosystem: 'pypi' });
+  const r = await verdictOf('requests', 'pypi');
   assert.equal(r.verdict, 'SAFE');
   assert.equal(r.ecosystem, 'pypi');
 });
@@ -64,7 +76,7 @@ test('pypi: a name that does not exist is HALLUCINATED', { skip: !online }, asyn
 // `sklearn` is a deprecated shim whose own description says to use
 // scikit-learn; it still takes hundreds of thousands of installs a week.
 test('pypi: the sklearn shim is DANGER with a deprecation notice and a popular twin', { skip: !online }, async () => {
-  const r = await inspectPackage('sklearn', { ecosystem: 'pypi' });
+  const r = await verdictOf('sklearn', 'pypi');
   assert.equal(r.verdict, 'DANGER');
   assert.ok(r.signals.some((s) => s.id === 'deprecated'));
   assert.ok(r.signals.some((s) => s.id === 'impersonates_popular_package'));
@@ -73,12 +85,12 @@ test('pypi: the sklearn shim is DANGER with a deprecation notice and a popular t
 // `pytorch` is the famous decoy: its only content is a message that the real
 // package is `torch`.
 test('pypi: pytorch is not SAFE', { skip: !online }, async () => {
-  const r = await inspectPackage('pytorch', { ecosystem: 'pypi' });
+  const r = await verdictOf('pytorch', 'pypi');
   assert.notEqual(r.verdict, 'SAFE');
   assert.ok(r.signals.some((s) => s.id === 'impersonates_popular_package' || s.id === 'deprecated'));
 });
 
 test('pypi: the legitimate twin is not flagged', { skip: !online }, async () => {
-  const r = await inspectPackage('scikit-learn', { ecosystem: 'pypi' });
+  const r = await verdictOf('scikit-learn', 'pypi');
   assert.equal(r.verdict, 'SAFE');
 });
