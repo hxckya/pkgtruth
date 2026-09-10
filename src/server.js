@@ -10,27 +10,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { inspectPackage } from './detect.js';
+import { inspectPackage, inspectMany } from './detect.js';
 import { primeDownloads, flushDiskCache } from './registry.js';
 
 export const VERSION = '0.1.0';
 
 const CONCURRENCY = 5;
-
-/** Run `fn` over `items`, a few at a time, preserving input order. */
-async function mapLimit(items, limit, fn) {
-  const out = new Array(items.length);
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (true) {
-      const i = next++;
-      if (i >= items.length) return;
-      out[i] = await fn(items[i]);
-    }
-  });
-  await Promise.all(workers);
-  return out;
-}
 
 const ORDER = { HALLUCINATED: 0, DANGER: 1, CAUTION: 2, UNKNOWN: 3, SAFE: 4 };
 
@@ -78,7 +63,7 @@ export function createServer() {
     async ({ names }) => {
       const unique = [...new Set(names)];
       await primeDownloads(unique);
-      const results = await mapLimit(unique, CONCURRENCY, (n) => inspectPackage(n));
+      const results = await inspectMany(unique, { concurrency: CONCURRENCY });
       results.sort((a, b) => (ORDER[a.verdict] ?? 9) - (ORDER[b.verdict] ?? 9));
 
       const blocking = results.filter((r) => r.verdict === 'HALLUCINATED' || r.verdict === 'DANGER');

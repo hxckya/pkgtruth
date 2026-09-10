@@ -74,7 +74,6 @@ discord.js
 chart.js
 pdf.js
 vue.js
-node.js
 react
 react-dom
 react-router

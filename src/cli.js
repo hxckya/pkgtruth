@@ -5,7 +5,7 @@
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { inspectPackage } from './detect.js';
+import { inspectMany } from './detect.js';
 import { primeDownloads, flushDiskCache } from './registry.js';
 
 const BLOCKING = new Set(['HALLUCINATED', 'DANGER']);
@@ -21,21 +21,6 @@ const PAINT = {
 };
 
 const ORDER = { HALLUCINATED: 0, DANGER: 1, CAUTION: 2, UNKNOWN: 3, SAFE: 4 };
-
-async function mapLimit(items, limit, fn) {
-  const out = new Array(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (true) {
-        const i = next++;
-        if (i >= items.length) return;
-        out[i] = await fn(items[i]);
-      }
-    }),
-  );
-  return out;
-}
 
 /** Collect every dependency name from a package.json. */
 async function readManifest(dir) {
@@ -142,7 +127,7 @@ export async function runCli(argv) {
 
   const unique = [...new Set(names)];
   await primeDownloads(unique);
-  const results = await mapLimit(unique, 5, (n) => inspectPackage(n));
+  const results = await inspectMany(unique, { concurrency: 5 });
   results.sort((a, b) => (ORDER[a.verdict] ?? 9) - (ORDER[b.verdict] ?? 9));
   const bad = results.filter((r) => blocking.has(r.verdict));
 

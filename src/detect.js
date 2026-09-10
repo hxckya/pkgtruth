@@ -241,3 +241,33 @@ export async function findPopularTwin(name, ownDownloads) {
   }
   return { twin: null };
 }
+
+/**
+ * Inspect many names with a bounded concurrency, then give every UNKNOWN a
+ * second, slower pass. A burst large enough to draw 429s from the downloads
+ * API leaves a tail of "could not verify"; most of it clears once the rate
+ * window resets, and the gate should say so instead of shrugging.
+ */
+export async function inspectMany(names, { concurrency = 4, retryUnknown = true, onProgress } = {}) {
+  const unique = [...new Set(names)];
+  const out = new Map();
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(concurrency, unique.length) }, async () => {
+    while (next < unique.length) {
+      const n = unique[next++];
+      out.set(n, await inspectPackage(n));
+      onProgress?.(out.size, unique.length);
+    }
+  }));
+  if (retryUnknown) {
+    const again = unique.filter((n) => out.get(n)?.verdict === 'UNKNOWN');
+    if (again.length) {
+      await new Promise((r) => setTimeout(r, 1500));
+      for (const n of again) {
+        const r = await inspectPackage(n);
+        if (r.verdict !== 'UNKNOWN') out.set(n, r);
+      }
+    }
+  }
+  return unique.map((n) => out.get(n));
+}
