@@ -55,7 +55,7 @@ const online = process.env.PKGTRUTH_TEST_ONLINE === '1';
 // fails the suite for a package that is perfectly well understood.
 async function verdictOf(name, ecosystem) {
   let r = await inspectPackage(name, { ecosystem });
-  if (r.verdict === 'UNKNOWN') {
+  if (r.verdict === 'UNKNOWN' || r.complete === false) {
     await new Promise((res) => setTimeout(res, 2000));
     r = await inspectPackage(name, { ecosystem });
   }

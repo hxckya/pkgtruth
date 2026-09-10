@@ -179,6 +179,10 @@ export async function inspectPackage(name, { ecosystem = 'npm', deep = true } = 
     // nowhere near `scikit-learn` by spelling, and its own notice says so.
     const target = pkg.deprecatedPointsTo;
     const t = await eco.fetchWeeklyDownloads(target);
+    // A throttled lookup of the replacement must not read as "no twin":
+    // the notice named it, and the verdict should say the comparison is
+    // still owed rather than quietly drop the strongest signal.
+    if (t.failed) gaps.push(`adoption of "${target}" unavailable (${t.failed})`);
     if (!t.failed && t.downloads !== null && downloads !== null) {
       const ratio = t.downloads / Math.max(downloads, 1);
       if (t.downloads > 5_000 && ratio > 20) {
