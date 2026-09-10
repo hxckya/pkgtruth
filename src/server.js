@@ -142,10 +142,11 @@ export function createServer() {
         '`npm install …`, `npx …`, `pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add` and similar, ' +
         'including behind `sudo`, `&&` chains and `sh -c`. Extracts the package names (npm and PyPI at once), ' +
         'checks each against its registry, and returns them worst-first. A command that installs nothing by name ' +
-        '(a bare `npm install` from a lockfile, `git`, `npm test`) returns total 0 and costs no network call — ' +
+        '(a bare `npm install` from a lockfile, `git`, `npm test`, or `npx <bin>` of a tool already in node_modules) returns total 0 and costs no network call — ' +
         'use check_dependencies on the manifest in that case. Read-only.',
       inputSchema: {
         command: z.string().min(1).max(4000).describe('The exact shell command about to run, e.g. "npm install express crossenv" or "pip install -U requests".'),
+        cwd: z.string().optional().describe('Directory the command will run in. Lets "npx <bin>" of an already-installed tool be recognised as fetching nothing. Defaults to the server\'s working directory.'),
       },
       outputSchema: {
         command: z.string(),
@@ -154,8 +155,8 @@ export function createServer() {
       },
       annotations: READ_ONLY,
     },
-    async ({ command }) => {
-      const report = await inspectInstallCommand(command, { concurrency: CONCURRENCY });
+    async ({ command, cwd }) => {
+      const report = await inspectInstallCommand(command, { concurrency: CONCURRENCY, cwd });
       await flushDiskCache();
       const text = report.total
         ? renderList(report.results)

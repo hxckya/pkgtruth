@@ -6,7 +6,7 @@
 import { inspectMany, ECOSYSTEMS, VERDICT_ORDER as ORDER, blockingVerdicts } from './detect.js';
 import { discoverManifests } from './manifests.js';
 import { primeDownloads, flushDiskCache } from './registry.js';
-import { commandFromHookInput, inspectInstallCommand } from './installcmd.js';
+import { hookInput, inspectInstallCommand } from './installcmd.js';
 
 const COLOR = process.stdout.isTTY && !process.env.NO_COLOR;
 const c = (code, s) => (COLOR ? `\x1b[${code}m${s}\x1b[0m` : s);
@@ -92,9 +92,9 @@ async function runHook({ failOn }) {
     process.stderr.write('pkgtruth hook: expects the hook JSON on stdin — see README, "As a Claude Code hook"\n');
     return 2;
   }
-  const command = commandFromHookInput(raw);
+  const { command, cwd } = hookInput(raw);
   if (!command) return 0;
-  const report = await inspectInstallCommand(command, { failOn, concurrency: 5 });
+  const report = await inspectInstallCommand(command, { failOn, concurrency: 5, cwd: cwd || process.cwd() });
   await flushDiskCache();
   if (!report.total) return 0;
 

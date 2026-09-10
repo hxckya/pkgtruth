@@ -132,3 +132,36 @@ test('hook: clean installs pass', { skip: !online }, async () => {
   const r = await hook('npm install express');
   assert.equal(r.code, 0);
 });
+
+// --- Run mode must not alarm on tools the project already has ------------------
+
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+test('npx of a locally installed bin fetches nothing, so it is not checked', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pkgtruth-npx-'));
+  try {
+    mkdirSync(path.join(root, 'node_modules', '.bin'), { recursive: true });
+    mkdirSync(path.join(root, 'node_modules', 'typescript'), { recursive: true });
+    writeFileSync(path.join(root, 'node_modules', '.bin', 'tsc'), '#!/bin/sh\n');
+    writeFileSync(path.join(root, 'node_modules', 'typescript', 'package.json'), '{}');
+    mkdirSync(path.join(root, 'packages', 'app'), { recursive: true });
+    const sub = path.join(root, 'packages', 'app');
+
+    assert.deepEqual(extractInstalls('npx tsc --noEmit', { cwd: root }), []);
+    assert.deepEqual(extractInstalls('npx tsc --noEmit', { cwd: sub }), [], 'walks up to the project root');
+    assert.deepEqual(extractInstalls('npx -p typescript tsc', { cwd: root }), [], 'an installed package named by -p');
+    assert.deepEqual(extractInstalls(`cd ${JSON.stringify(sub)} && npx tsc`, { cwd: tmpdir() }), [], 'cd earlier in the chain');
+    assert.deepEqual(npm('npx tsc@5.4 --noEmit'), ['tsc'], 'an explicit version is always fetched');
+    assert.deepEqual(extractInstalls('npx tsc', { cwd: tmpdir() }).flatMap((p) => p.names), ['tsc'], 'nothing local → checked');
+    assert.deepEqual(extractInstalls('npm install tsc', { cwd: root }).flatMap((p) => p.names), ['tsc'], 'install mode is never skipped');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('hook input carries cwd when Claude Code sends it', async () => {
+  const { hookInput } = await import('../src/installcmd.js');
+  assert.deepEqual(hookInput('{"cwd":"/tmp/x","tool_input":{"command":"npx tsc"}}'), { command: 'npx tsc', cwd: '/tmp/x' });
+  assert.deepEqual(hookInput('npx tsc'), { command: 'npx tsc', cwd: null });
+});

@@ -120,8 +120,9 @@ to `~/.claude/settings.json` (every project) or `.claude/settings.json`
 }
 ```
 
-Commands that install nothing by name — a bare `npm install`, `git`, tests —
-pass through with no network call. A blocked command comes back to the agent
+Commands that install nothing by name — a bare `npm install`, `git`, tests,
+`npx <bin>` of a tool already in `node_modules` — pass through with no network
+call. A blocked command comes back to the agent
 as a denial with the evidence, so it can pick the real package instead:
 
 ```
