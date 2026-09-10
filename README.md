@@ -48,8 +48,20 @@ ten times a week.
 name. That it takes 1,486 installs a week anyway is the point: a dot and a
 hyphen are enough.
 
+PyPI has the same shape without the placeholder:
+
+| Name | What it is | Weekly installs | The real one |
+| --- | --- | --- | --- |
+| `sklearn` | Deprecated shim — its own notice says "use scikit-learn instead" | 321,887 | `scikit-learn` (42.6M) |
+| `pytorch` | A decoy whose only content is "the package named for PyTorch is torch" | 41,026 | `torch` (14.4M) |
+
+Neither is spelled anything like the package it stands in for, which is why
+pkgtruth also reads what a deprecation notice *says*: when it names a far more
+popular package, that name is the evidence.
+
 ```bash
 npx pkgtruth check types-node socket-io
+npx pkgtruth check -e pypi sklearn pytorch
 ```
 
 Those two came from a hand check of twenty names. The systematic version —

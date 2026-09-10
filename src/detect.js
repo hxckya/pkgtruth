@@ -202,6 +202,7 @@ export async function inspectPackage(name, { ecosystem = 'npm', deep = true } = 
     name, ecosystem, verdict, score, exists: true,
     version: pkg.latest,
     ageDays, weeklyDownloads: downloads,
+    pointsTo: pkg.deprecatedPointsTo || null,
     complete: gaps.length === 0,
     repository: pkg.repository,
     signals,

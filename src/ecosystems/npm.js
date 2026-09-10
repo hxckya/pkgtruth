@@ -5,6 +5,9 @@
  */
 
 import { fetchPackument, fetchWeeklyDownloads as fetchDownloads, searchPackages } from '../registry.js';
+import { pointsToFrom } from '../notice.js';
+
+export { pointsToFrom };
 
 export const id = 'npm';
 export const label = 'npm';
@@ -55,14 +58,6 @@ export async function fetchPackage(name) {
 }
 
 
-/** The package a deprecation notice tells you to use instead, if it names one. */
-export function pointsToFrom(text) {
-  if (!text) return null;
-  const m = String(text).match(/(?:use|install|see|try)\s+(?:the\s+)?[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)[`'"]?(?:\s+package)?\s+instead|renamed to\s+[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)|replaced by\s+[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)|(?:named for|package (?:you want|you are looking for|is called)|is now)\s+[^.\n]{0,40}?[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)[`'"]?\s*$/im);
-  if (!m) return null;
-  const hit = m.slice(1).find(Boolean);
-  return hit ? hit.replace(/[.,;:]+$/, '') : null;
-}
 
 export const fetchWeeklyDownloads = fetchDownloads;
 

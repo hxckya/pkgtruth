@@ -35,6 +35,8 @@ const HOST_LIMITS = {
   // individual calls small (only scoped names need one), so serialising them
   // costs little and buys a verdict that does not flicker.
   'api.npmjs.org': { concurrency: 1, minIntervalMs: 250 },
+  // pypistats is friendlier than npm's downloads API but still throttles bursts.
+  'pypistats.org': { concurrency: 2, minIntervalMs: 200 },
   default: { concurrency: 6, minIntervalMs: 0 },
 };
 

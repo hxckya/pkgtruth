@@ -18,6 +18,9 @@
 
 import { getJson } from '../registry.js';
 import { getCachedDownloads, putCachedDownloads } from '../diskcache.js';
+import { pointsToFrom, DEPRECATION_CUE } from '../notice.js';
+
+export { pointsToFrom };
 
 const pypiUrl = () => process.env.PKGTRUTH_PYPI || 'https://pypi.org';
 const statsUrl = () => process.env.PKGTRUTH_PYPISTATS || 'https://pypistats.org';
@@ -48,8 +51,9 @@ export async function fetchPackage(name) {
   const text = `${info.summary || ''}\n${(info.description || '').slice(0, 4000)}`;
 
   // PyPI has no deprecation flag. Maintainers say it in prose, and the prose
-  // is remarkably consistent: "deprecated", "use X instead", "renamed to".
-  const m = text.match(/\b(?:deprecated|no longer maintained|unmaintained|use\s+[`'"]?([A-Za-z0-9_.-]+)[`'"]?\s+instead|renamed to\s+[`'"]?([A-Za-z0-9_.-]+)|replaced by\s+[`'"]?([A-Za-z0-9_.-]+)|you tried to install|the package (?:named|you (?:want|are looking for))[^.\n]{0,40}\bis\s+[`'"]?([A-Za-z0-9_.-]+)|this package is a (?:placeholder|stub|dummy))/i);
+  // is consistent enough to read — but only the phrasings that are about the
+  // package. A library renaming a class is not a deprecated package.
+  const m = text.match(DEPRECATION_CUE);
   const deprecated = m ? tidy(text, m.index) : null;
 
   return {
@@ -70,10 +74,13 @@ export async function fetchPackage(name) {
 
 /** The sentence around `at`, stripped of markdown decoration. */
 function tidy(text, at) {
+  // The sentence with the cue plus the one after it: "You tried to install
+  // X." alone is useless; the next sentence names the real package.
   const start = Math.max(text.lastIndexOf('\n', at), text.lastIndexOf('. ', at) + 1, 0);
   let end = text.indexOf('\n', at); if (end === -1) end = text.length;
-  const dot = text.indexOf('. ', at); if (dot !== -1 && dot < end) end = dot + 1;
-  return text.slice(start, end).replace(/[#*_`>]+/g, ' ').replace(/[\u26A0\uFE0F]/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  const first = text.indexOf('. ', at);
+  if (first !== -1 && first < end) { const second = text.indexOf('. ', first + 2); if (second !== -1 && second < end) end = second + 1; }
+  return text.slice(start, end).replace(/[#*_`>]+/g, ' ').replace(/[\u26A0\uFE0F]/g, '').replace(/\s+/g, ' ').trim().slice(0, 220);
 }
 
 function pickRepo(info) {
@@ -85,14 +92,6 @@ function pickRepo(info) {
 }
 
 
-/** The package a deprecation notice tells you to use instead, if it names one. */
-export function pointsToFrom(text) {
-  if (!text) return null;
-  const m = String(text).match(/(?:use|install|see|try)\s+(?:the\s+)?[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)[`'"]?(?:\s+package)?\s+instead|renamed to\s+[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)|replaced by\s+[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)|(?:named for|package (?:you want|you are looking for|is called)|is now)\s+[^.\n]{0,40}?[`'"]?(@?[A-Za-z0-9][A-Za-z0-9_.\/-]*)[`'"]?\s*$/im);
-  if (!m) return null;
-  const hit = m.slice(1).find(Boolean);
-  return hit ? hit.replace(/[.,;:]+$/, '') : null;
-}
 
 /** Weekly downloads via pypistats. Same contract as the npm client. */
 export async function fetchWeeklyDownloads(name) {
