@@ -138,8 +138,12 @@ one arrives with the evidence behind it — an agent should never have to take
 verdict is `UNKNOWN`, never `SAFE`. A degraded network must not silently turn
 a security check into a no-op.
 
-**Popular packages are not flagged.** Checked against a real 18-dependency
-project, zero false positives. A gate that cries wolf gets switched off.
+**Popular packages are not flagged — measured, not asserted.** The
+[false-positive audit](FP-AUDIT.md) runs the detector over the direct
+dependency closure of 240 well-known packages: **1,523 real packages, 0
+blocking verdicts, 0 UNKNOWN** after the built-in second pass, and 40 CAUTION
+(deprecated or unmaintained — true statements, not blocked by default). A gate
+that cries wolf gets switched off; this one has a number attached.
 
 **No build step.** Two direct dependencies — the MCP SDK and `zod`, both only
 needed for the server. `npx pkgtruth` starts immediately.
@@ -193,10 +197,11 @@ in one request, requests to that host are paced serially, and figures are
 cached on disk for six hours. Weekly download counts move slowly, so a
 six-hour-old number is no less true.
 
-A warm scan of ~18 dependencies takes about 1.4 seconds. A cold one after
-heavy use may return `UNKNOWN` for some packages — that is the intended
-failure mode. A throttled lookup never becomes `SAFE`; re-run, and the cache
-will answer.
+A warm scan of ~18 dependencies takes about 1.4 seconds. Large scans that
+draw 429s from the downloads API leave some packages `UNKNOWN` on the first
+pass; every entry point then re-checks only those names, serially, after a
+short pause. In the 1,523-package audit that second pass cleared all of them.
+A throttled lookup never becomes `SAFE`.
 
 Cached figures are keyed by the API they came from, so pointing
 `PKGTRUTH_DOWNLOADS_API` at a private registry never reuses npm's numbers.

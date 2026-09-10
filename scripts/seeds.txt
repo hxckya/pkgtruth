@@ -73,7 +73,6 @@ socket.io-client
 discord.js
 chart.js
 pdf.js
-vue.js
 react
 react-dom
 react-router

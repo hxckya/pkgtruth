@@ -17,7 +17,7 @@ const seeds = (await readFile(new URL('./seeds.txt', import.meta.url), 'utf8'))
 const seedSet = new Set(seeds);
 
 // Names that are pure garblings with no legitimate seed to derive from.
-const EXTRA_CANDIDATES = { 'node.js': 'node', 'nodejs': 'node' };
+const EXTRA_CANDIDATES = { 'node.js': 'node', 'nodejs': 'node', 'vue.js': 'vue' };
 const candidates = new Map(); // candidate -> seed
 for (const [c, s] of Object.entries(EXTRA_CANDIDATES)) candidates.set(c, s);
 for (const s of seeds) for (const m of mutations(s, seedSet)) if (!candidates.has(m)) candidates.set(m, s);
