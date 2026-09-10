@@ -89,7 +89,10 @@ function renderSection(r) {
   md += `package in the third column. The installs are real, and the maintainer has already said\n`;
   md += `they belong somewhere else.\n\n`;
   md += `| name | installs / week | points to | signals |\n|---|---|---|---|\n`;
-  md += (r.other.map((h) => row(h, h.pointsTo || matchedTwin(h) || h.seed)).join('\n') || '| — | | | |') + '\n\n';
+  // Show the canonical name when the notice merely spells the seed differently
+  // ("Express" for express); otherwise show what the notice actually said.
+  const same = (a, b) => String(a).toLowerCase().replace(/[-_.]+/g, '-') === String(b).toLowerCase().replace(/[-_.]+/g, '-');
+  md += (r.other.map((h) => row(h, h.pointsTo && same(h.pointsTo, h.seed) ? h.seed : (h.pointsTo || matchedTwin(h) || h.seed))).join('\n') || '| — | | | |') + '\n\n';
   return md;
 }
 

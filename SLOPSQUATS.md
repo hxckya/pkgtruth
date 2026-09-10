@@ -79,7 +79,7 @@ they belong somewhere else.
 | `babel-macros` | 12,487 | `babel-plugin-macros` | deprecated, impersonates popular package |
 | `socket-io` | 1,094 | `socket.io` | deprecated, impersonates popular package |
 | `auth0-react` | 888 | `@auth0/auth0-react` | deprecated, impersonates popular package |
-| `expressjs` | 772 | `Express` | deprecated |
+| `expressjs` | 772 | `express` | deprecated |
 | `node-tar` | 456 | `tar` | deprecated, impersonates popular package |
 | `vuejs` | 432 | `vue` | deprecated |
 | `node-semver` | 50 | `semver` | deprecated |
