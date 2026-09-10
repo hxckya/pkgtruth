@@ -1,0 +1,10 @@
+{
+  "name": "pkgtruth",
+  "version": "0.2.2",
+  "description": "Blocks hallucinated and slopsquatted npm/PyPI packages: an MCP server to ask before adding a dependency, and a PreToolUse hook that denies install commands naming a bad package.",
+  "author": { "name": "hxckya", "url": "https://github.com/hxckya" },
+  "homepage": "https://github.com/hxckya/pkgtruth",
+  "repository": "https://github.com/hxckya/pkgtruth",
+  "license": "MIT",
+  "keywords": ["security", "supply-chain", "npm", "pypi", "slopsquatting", "typosquatting", "mcp", "hooks"]
+}

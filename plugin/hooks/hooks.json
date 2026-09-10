@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y pkgtruth@0.2.2 hook",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

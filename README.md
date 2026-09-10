@@ -135,11 +135,21 @@ pkgtruth blocked this command: 1 of 2 package(s) must not be installed as-is.
 
 Add `--fail-on caution` to also stop packages that could not be verified.
 `npm install -g pkgtruth` with `"command": "pkgtruth hook"` skips the `npx`
-resolution on every call. The hook reads `tool_input.command` from Claude
+resolution on every call (measured: ~0.2 s per command via `npx`, ~0.03 s direct). The hook reads `tool_input.command` from Claude
 Code's JSON, or a bare command string from any other agent that pipes one in,
 and exits 2 with a `permissionDecision: "deny"` when it blocks — there is no
 environment variable that turns it off, because the agent controls the
 environment of the command it runs.
+
+### As a Claude Code plugin (server + hook in one install)
+
+```
+/plugin marketplace add hxckya/pkgtruth
+/plugin install pkgtruth@pkgtruth
+```
+
+The plugin ([`plugin/`](plugin/)) registers the MCP server and the hook above
+together, pinned to the npm release it ships with.
 
 ### As a CLI (for humans and CI)
 

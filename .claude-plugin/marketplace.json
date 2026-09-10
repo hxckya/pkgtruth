@@ -1,0 +1,36 @@
+{
+  "name": "pkgtruth",
+  "owner": {
+    "name": "hxckya",
+    "url": "https://github.com/hxckya"
+  },
+  "metadata": {
+    "description": "Ground truth about npm and PyPI packages for coding agents: hallucinated and slopsquatted names are caught before they are installed."
+  },
+  "plugins": [
+    {
+      "name": "pkgtruth",
+      "source": "./plugin",
+      "description": "MCP server the agent can ask about a package, plus a PreToolUse hook that denies npm/npx/pnpm/yarn/bun/pip/uv/poetry installs of hallucinated or slopsquatted names.",
+      "version": "0.2.2",
+      "author": {
+        "name": "hxckya",
+        "url": "https://github.com/hxckya"
+      },
+      "homepage": "https://github.com/hxckya/pkgtruth",
+      "repository": "https://github.com/hxckya/pkgtruth",
+      "license": "MIT",
+      "keywords": [
+        "security",
+        "supply-chain",
+        "npm",
+        "pypi",
+        "slopsquatting",
+        "typosquatting",
+        "mcp",
+        "hooks"
+      ],
+      "category": "security"
+    }
+  ]
+}
