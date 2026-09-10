@@ -44,11 +44,32 @@ Expected: `express` SAFE, `unused-imports` DANGER (npm security placeholder),
 | tool | arguments | use |
 |---|---|---|
 | `check_package` | `{ "name": "<npm package>" }` | before adding, importing, or recommending one dependency |
-| `check_dependencies` | `{ "names": ["<pkg>", ...] }` (≤50) | before writing `package.json` or running an install |
+| `check_dependencies` | `{ "names": ["<pkg>", ...] }` (≤50) | before writing `package.json` or `requirements.txt` |
+| `check_install_command` | `{ "command": "npm install <pkg>" }` | before running an install or `npx` command — pass the exact command |
 
-Both return a verdict per package — `SAFE`, `CAUTION`, `DANGER`, `HALLUCINATED`,
+Every tool takes an optional `"ecosystem": "npm" | "pypi"` (default npm);
+`check_install_command` infers it from the command. All return a verdict per package — `SAFE`, `CAUTION`, `DANGER`, `HALLUCINATED`,
 or `UNKNOWN` — with the evidence behind it. Treat `HALLUCINATED` and `DANGER`
 as "do not install"; treat `UNKNOWN` as "could not verify", never as safe.
+
+## 4. Optional: block the install command itself (Claude Code)
+
+Add a PreToolUse hook so `npm install`, `npx`, `pip install`, `uv add` and
+similar are denied when they name a blocked package, whether or not the
+agent thought to call a tool first. In `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "npx -y pkgtruth hook" }] }
+    ]
+  }
+}
+```
+
+Non-install commands pass through with no output. A blocked command returns
+exit 2 and a `permissionDecision: "deny"` whose reason names the real package.
 
 ## Optional configuration
 

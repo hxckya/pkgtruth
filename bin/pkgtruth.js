@@ -13,7 +13,7 @@ if (argv.includes('--help') || argv.includes('-h')) {
 }
 
 if (argv.includes('--version') || argv.includes('-v')) {
-  const { VERSION } = await import('../src/server.js');
+  const { VERSION } = await import('../src/version.js');
   process.stdout.write(`${VERSION}\n`);
   process.exit(0);
 }

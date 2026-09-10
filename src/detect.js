@@ -237,6 +237,20 @@ function buildSummary(name, verdict, signals, downloads) {
  * API leaves a tail of "could not verify"; most of it clears once the rate
  * window resets, and the gate should say so instead of shrugging.
  */
+/** Worst first, the order every list in pkgtruth is shown in. */
+export const VERDICT_ORDER = { HALLUCINATED: 0, DANGER: 1, CAUTION: 2, UNKNOWN: 3, SAFE: 4 };
+
+/**
+ * Which verdicts block at a --fail-on level. Strict mode also refuses
+ * packages that could not be verified at all — "we could not check" is not
+ * a pass.
+ */
+export function blockingVerdicts(failOn = 'danger') {
+  return failOn === 'caution'
+    ? new Set(['HALLUCINATED', 'DANGER', 'CAUTION', 'UNKNOWN'])
+    : new Set(['HALLUCINATED', 'DANGER']);
+}
+
 export async function inspectMany(names, { ecosystem = 'npm', concurrency = 4, retryUnknown = true, onProgress } = {}) {
   const unique = [...new Set(names)];
   const out = new Map();

@@ -9,7 +9,7 @@ on:
 # on npmjs.com; the MCP Registry verifies it through github-oidc.
 permissions:
   id-token: write
-  contents: read
+  contents: write # to create the GitHub Release
 
 jobs:
   release:
@@ -61,3 +61,11 @@ jobs:
         run: |
           ./mcp-publisher login github-oidc
           ./mcp-publisher publish
+
+      # Last, so a failed publish never leaves a release pointing at nothing.
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag

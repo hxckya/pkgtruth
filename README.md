@@ -13,7 +13,9 @@ Your agent just wrote `npm install unused-imports`. That package is not the
 linter plugin it meant. It is a name an attacker registered because models
 kept inventing it — and npm has since replaced it with a security placeholder.
 
-`pkgtruth` catches that before it reaches your lockfile.
+`pkgtruth` catches that before it reaches your lockfile — as an MCP server the
+agent asks, a CLI for CI, a GitHub Action on pull requests, or a Claude Code
+hook that denies the install command itself.
 
 
 ## Why this exists
@@ -88,12 +90,55 @@ follow the live list without watching the repository.
 }
 ```
 
-Two tools become available:
+Three tools become available:
 
 | Tool | Use it when |
 | --- | --- |
 | `check_package` | About to add, import, or recommend one dependency (`ecosystem: "npm" \| "pypi"`, default npm) |
-| `check_dependencies` | About to write a `package.json` / `requirements.txt` or run an install command |
+| `check_dependencies` | About to write a `package.json` / `requirements.txt` |
+| `check_install_command` | About to run `npm install …`, `npx …`, `pip install …` — hand it the exact command |
+
+### As a Claude Code hook (the install command itself is stopped)
+
+An MCP tool only helps when the agent remembers to call it. A `PreToolUse`
+hook runs on every shell command instead, and denies `npm install`, `npx`,
+`pnpm add`, `yarn add`, `bun add`, `pip install`, `uv add`, `poetry add`
+and friends when a package they name is hallucinated or dangerous. Add this
+to `~/.claude/settings.json` (every project) or `.claude/settings.json`
+(one repository, committable):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "npx -y pkgtruth hook" }]
+      }
+    ]
+  }
+}
+```
+
+Commands that install nothing by name — a bare `npm install`, `git`, tests —
+pass through with no network call. A blocked command comes back to the agent
+as a denial with the evidence, so it can pick the real package instead:
+
+```
+pkgtruth blocked this command: 1 of 2 package(s) must not be installed as-is.
+  ✖ crossenv DANGER — npm replaced this package with a security placeholder (0.0.2-security).
+    The name was used to publish malicious code. Package is 1 edit(s) from "cross-env",
+    which has 22,155,059 weekly downloads (15,418x this one). Confirm you meant this
+    package and not that one.
+```
+
+Add `--fail-on caution` to also stop packages that could not be verified.
+`npm install -g pkgtruth` with `"command": "pkgtruth hook"` skips the `npx`
+resolution on every call. The hook reads `tool_input.command` from Claude
+Code's JSON, or a bare command string from any other agent that pipes one in,
+and exits 2 with a `permissionDecision: "deny"` when it blocks — there is no
+environment variable that turns it off, because the agent controls the
+environment of the command it runs.
 
 ### As a CLI (for humans and CI)
 

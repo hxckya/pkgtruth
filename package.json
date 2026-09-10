@@ -1,6 +1,6 @@
 {
   "name": "pkgtruth",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Ground truth about npm and PyPI packages for AI coding agents. Detects hallucinated and slopsquatted dependencies before they get installed.",
   "keywords": [
     "ai-agent",
