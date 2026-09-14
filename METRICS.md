@@ -9,3 +9,4 @@ read the raw count as adoption.
 | week ending | npm dl (7d) | stars | forks | issues | mcp registry |
 |---|---|---|---|---|---|
 | 2026-09-09 | 53 | 2 | 0 | 0 | active |
+| 2026-09-14 | 671 | 4 | 0 | 0 | active |
