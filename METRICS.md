@@ -13,3 +13,4 @@ read the raw count as adoption.
 | 2026-09-21 | 47 | 4 | 0 | 0 | active |
 | 2026-09-28 | 55 | 4 | 0 | 0 | active |
 | 2026-10-05 | 46 | 4 | 0 | 0 | active |
+| 2026-10-12 | 54 | 4 | 0 | 0 | active |
