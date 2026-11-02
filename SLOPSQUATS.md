@@ -1,6 +1,6 @@
 # Live slopsquats
 
-_Generated 2026-10-26 by [`scripts/hunt.mjs`](scripts/hunt.mjs). Regenerated weekly._
+_Generated 2026-11-02 by [`scripts/hunt.mjs`](scripts/hunt.mjs). Regenerated weekly._
 
 Garbling rules: scope dropped, dot↔hyphen, hyphen dropped, plugin prefix dropped, `js`
 appended (npm); `python-`/`py` prefix added or dropped, digit suffix confusion,
@@ -15,8 +15,8 @@ small or new is not evidence of anything.
 
 Start from 240 well-known packages, produce the names a model plausibly emits
 instead of each one, and run every candidate through pkgtruth. **773 candidates
-checked; 263 exist on npm; 125 came back DANGER;** 50 meet the
-bar for this page and 75 are withheld.
+checked; 263 exist on npm; 114 came back DANGER;** 49 meet the
+bar for this page and 65 are withheld.
 
 ### A. npm security placeholders — 36
 
@@ -25,44 +25,44 @@ placeholder. Anything still installing them is installing the name an attacker c
 
 | name | installs / week | garbled from | signals |
 |---|---|---|---|
-| `crossenv` | 1,040 | `cross-env` | npm security placeholder, impersonates popular package |
-| `node.js` | 694 | `node` | npm security placeholder |
-| `eslint-js` | 230 | `@eslint/js` | npm security placeholder |
-| `supabase-js` | 222 | `@supabase/supabase-js` | npm security placeholder, impersonates popular package |
-| `mysqljs` | 126 | `mysql` | npm security placeholder, impersonates popular package |
-| `unused-imports` | 92 | `eslint-plugin-unused-imports` | npm security placeholder, impersonates popular package |
-| `nodemailer-js` | 75 | `nodemailer` | npm security placeholder, impersonates popular package |
-| `azure-identity` | 37 | `@azure/identity` | npm security placeholder, almost no adoption |
-| `icons-material` | 34 | `@mui/icons-material` | npm security placeholder, almost no adoption |
-| `plugin-react` | 34 | `@vitejs/plugin-react` | npm security placeholder, almost no adoption |
-| `types-node` | 20 | `@types/node` | npm security placeholder, almost no adoption |
-| `client-s3` | 11 | `@aws-sdk/client-s3` | npm security placeholder, almost no adoption, impersonates popular package |
-| `sveltejs` | 11 | `svelte` | npm security placeholder, almost no adoption |
-| `hookform-resolvers` | 8 | `@hookform/resolvers` | npm security placeholder, almost no adoption |
-| `prettierjs` | 5 | `prettier` | npm security placeholder, almost no adoption |
-| `jestjs` | 5 | `jest` | npm security placeholder, almost no adoption |
-| `nanoid-js` | 4 | `nanoid` | npm security placeholder, almost no adoption, impersonates popular package |
-| `mocha-js` | 3 | `mocha` | npm security placeholder, almost no adoption, impersonates popular package |
-| `vitestjs` | 3 | `vitest` | npm security placeholder, almost no adoption |
-| `commander-js` | 3 | `commander` | npm security placeholder, almost no adoption, impersonates popular package |
-| `node-pino` | 3 | `pino` | npm security placeholder, almost no adoption |
-| `typescriptjs` | 2 | `typescript` | npm security placeholder, almost no adoption |
-| `node-prettier` | 2 | `prettier` | npm security placeholder, almost no adoption |
-| `cypressjs` | 2 | `cypress` | npm security placeholder, almost no adoption |
-| `node-winston` | 2 | `winston` | npm security placeholder, almost no adoption |
-| `nodemonjs` | 2 | `nodemon` | npm security placeholder, almost no adoption |
-| `jsdom-js` | 1 | `jsdom` | npm security placeholder, almost no adoption |
-| `luxon-js` | 1 | `luxon` | npm security placeholder, almost no adoption, impersonates popular package |
-| `zod-js` | 1 | `zod` | npm security placeholder, almost no adoption, impersonates popular package |
-| `yargs-js` | 1 | `yargs` | npm security placeholder, almost no adoption |
-| `winston-js` | 1 | `winston` | npm security placeholder, almost no adoption, impersonates popular package |
-| `immer-js` | 1 | `immer` | npm security placeholder, almost no adoption |
-| `jsonwebtoken-js` | 0 | `jsonwebtoken` | npm security placeholder, almost no adoption, impersonates popular package |
-| `yupjs` | 0 | `yup` | npm security placeholder, almost no adoption |
-| `inquirer-js` | 0 | `inquirer` | npm security placeholder, almost no adoption |
-| `rxjs-js` | 0 | `rxjs` | npm security placeholder, almost no adoption, impersonates popular package |
+| `crossenv` | 2,854 | `cross-env` | npm security placeholder |
+| `node.js` | 1,292 | `node` | npm security placeholder |
+| `eslint-js` | 1,133 | `@eslint/js` | npm security placeholder |
+| `supabase-js` | 827 | `@supabase/supabase-js` | npm security placeholder, impersonates popular package |
+| `mysqljs` | 262 | `mysql` | npm security placeholder, impersonates popular package |
+| `unused-imports` | 221 | `eslint-plugin-unused-imports` | npm security placeholder |
+| `nodemailer-js` | 190 | `nodemailer` | npm security placeholder, impersonates popular package |
+| `plugin-react` | 93 | `@vitejs/plugin-react` | npm security placeholder |
+| `icons-material` | 88 | `@mui/icons-material` | npm security placeholder, impersonates popular package |
+| `azure-identity` | 82 | `@azure/identity` | npm security placeholder |
+| `client-s3` | 48 | `@aws-sdk/client-s3` | npm security placeholder, almost no adoption |
+| `sveltejs` | 48 | `svelte` | npm security placeholder, almost no adoption |
+| `types-node` | 46 | `@types/node` | npm security placeholder, almost no adoption |
+| `hookform-resolvers` | 40 | `@hookform/resolvers` | npm security placeholder, almost no adoption |
+| `jestjs` | 17 | `jest` | npm security placeholder, almost no adoption |
+| `node-pino` | 17 | `pino` | npm security placeholder, almost no adoption |
+| `commander-js` | 15 | `commander` | npm security placeholder, almost no adoption, impersonates popular package |
+| `jsdom-js` | 8 | `jsdom` | npm security placeholder, almost no adoption, impersonates popular package |
+| `nanoid-js` | 8 | `nanoid` | npm security placeholder, almost no adoption |
+| `zod-js` | 8 | `zod` | npm security placeholder, almost no adoption, impersonates popular package |
+| `typescriptjs` | 7 | `typescript` | npm security placeholder, almost no adoption |
+| `prettierjs` | 7 | `prettier` | npm security placeholder, almost no adoption |
+| `node-prettier` | 7 | `prettier` | npm security placeholder, almost no adoption |
+| `luxon-js` | 7 | `luxon` | npm security placeholder, almost no adoption |
+| `yargs-js` | 7 | `yargs` | npm security placeholder, almost no adoption |
+| `inquirer-js` | 7 | `inquirer` | npm security placeholder, almost no adoption |
+| `node-winston` | 7 | `winston` | npm security placeholder, almost no adoption |
+| `immer-js` | 7 | `immer` | npm security placeholder, almost no adoption |
+| `nodemonjs` | 7 | `nodemon` | npm security placeholder, almost no adoption |
+| `mocha-js` | 6 | `mocha` | npm security placeholder, almost no adoption, impersonates popular package |
+| `vitestjs` | 6 | `vitest` | npm security placeholder, almost no adoption |
+| `cypressjs` | 6 | `cypress` | npm security placeholder, almost no adoption |
+| `winston-js` | 6 | `winston` | npm security placeholder, almost no adoption, impersonates popular package |
+| `rxjs-js` | 6 | `rxjs` | npm security placeholder, almost no adoption, impersonates popular package |
+| `yupjs` | 5 | `yup` | npm security placeholder, almost no adoption |
+| `jsonwebtoken-js` | 2 | `jsonwebtoken` | npm security placeholder, almost no adoption |
 
-### B. Deprecated names whose own notice points elsewhere — 14
+### B. Deprecated names whose own notice points elsewhere — 13
 
 Not malicious. Each carries a deprecation message from its own maintainer naming the
 package in the third column. The installs are real, and the maintainer has already said
@@ -70,27 +70,26 @@ they belong somewhere else.
 
 | name | installs / week | points to | signals |
 |---|---|---|---|
-| `node-sass` | 538,182 | `sass` | deprecated, impersonates popular package |
-| `rollup-plugin-node-resolve` | 430,335 | `@rollup/plugin-node-resolve` | deprecated, impersonates popular package |
-| `typescript-eslint-parser` | 76,647 | `@typescript-eslint/parser` | deprecated, impersonates popular package |
-| `jest-dom` | 72,090 | `@testing-library/jest-dom` | deprecated, impersonates popular package |
-| `react-testing-library` | 28,714 | `@testing-library/react` | deprecated, impersonates popular package |
-| `babel-macros` | 12,994 | `babel-plugin-macros` | deprecated, impersonates popular package |
-| `turf` | 10,294 | `@turf/turf` | deprecated, impersonates popular package |
-| `socket-io` | 573 | `socket.io` | deprecated, impersonates popular package |
-| `expressjs` | 369 | `express` | deprecated |
-| `vuejs` | 337 | `vue` | deprecated |
-| `node-tar` | 213 | `tar` | deprecated, impersonates popular package |
-| `auth0-react` | 129 | `@auth0/auth0-react` | deprecated |
-| `node-semver` | 72 | `semver` | deprecated |
-| `clerk-nextjs` | 13 | `@clerk/nextjs` | deprecated, almost no adoption |
+| `node-sass` | 1,096,642 | `sass` | deprecated, impersonates popular package |
+| `rollup-plugin-node-resolve` | 873,282 | `@rollup/plugin-node-resolve` | deprecated, impersonates popular package |
+| `jest-dom` | 161,391 | `@testing-library/jest-dom` | deprecated, impersonates popular package |
+| `typescript-eslint-parser` | 129,559 | `@typescript-eslint/parser` | deprecated, impersonates popular package |
+| `react-testing-library` | 51,160 | `@testing-library/react` | deprecated, impersonates popular package |
+| `turf` | 24,313 | `@turf/turf` | deprecated, impersonates popular package |
+| `babel-macros` | 12,298 | `babel-plugin-macros` | deprecated, impersonates popular package |
+| `socket-io` | 1,608 | `socket.io` | deprecated, impersonates popular package |
+| `expressjs` | 938 | `express` | deprecated |
+| `node-tar` | 485 | `tar` | deprecated, impersonates popular package |
+| `auth0-react` | 280 | `@auth0/auth0-react` | deprecated, impersonates popular package |
+| `node-semver` | 92 | `semver` | deprecated |
+| `clerk-nextjs` | 6 | `@clerk/nextjs` | deprecated, almost no adoption |
 
 ## PyPI
 
 Start from 124 well-known packages, produce the names a model plausibly emits
 instead of each one, and run every candidate through pkgtruth. **1109 candidates
-checked; 120 exist on PyPI; 86 came back DANGER;** 2 meet the
-bar for this page and 84 are withheld.
+checked; 120 exist on PyPI; 88 came back DANGER;** 2 meet the
+bar for this page and 86 are withheld.
 
 PyPI deletes malicious projects outright rather than leaving a placeholder, so a purged
 name simply no longer exists and is not listed here. What remains are names that exist,
@@ -104,8 +103,8 @@ they belong somewhere else.
 
 | name | installs / week | points to | signals |
 |---|---|---|---|
-| `sklearn` | 316,966 | `scikit-learn` | deprecated, impersonates popular package |
-| `pytorch` | 42,046 | `torch` | deprecated, impersonates popular package |
+| `sklearn` | 474,138 | `scikit-learn` | deprecated, impersonates popular package |
+| `pytorch` | 41,103 | `torch` | deprecated, impersonates popular package |
 
 ## Reproduce
 
